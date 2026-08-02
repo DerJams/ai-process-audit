@@ -116,6 +116,16 @@ as risk, and `scoring/rubric.py` inverts it during aggregation. This removes a w
 class of labelling error, since a human labeller and a model judge would both
 otherwise have to remember to flip one criterion out of six.
 
+**One rule sits outside the arithmetic.** A weighted average lets five good criteria
+outvote one bad one. That is correct for a score and wrong for a recommendation when
+the bad one is that a mistake would be a serious event. So a process scoring 5 on
+implementation risk cannot be recommended above Worth a pilot, whatever it scored.
+The score is never changed, the band it earned is printed next to the capped one, and
+the report says why. This is a cap rather than a heavier weight on purpose: raising
+the weight would nudge every process, including the ones where risk is a 2 and the
+change is noise, whereas the cap does nothing at all until risk reaches the top of
+the scale.
+
 ## Why a pipeline and not an agent
 
 This system could have been an agent. It would have been faster to write. A loop
@@ -220,6 +230,9 @@ To be filled in:
 | Band agreement | not measured | 0 |
 | Ranking pair agreement | not measured | 0 |
 
+Three intakes are waiting to be labelled, at 30 labels each, so the first run will
+compare 90 labels against rubric 1.1.0-draft.
+
 Per criterion agreement, which criterion is weakest, which direction the engine
 leans, and what was changed as a result: all to follow.
 
@@ -254,19 +267,31 @@ are for labelling and testing, and they describe invented businesses.
   judgement, and any agreement figure produced against it measures the thresholds.
   Live judging is not implemented, and `scoring/judge.py` contains no network code.
   Turning it on is a reviewed change, not a setting.
-- **The rubric is a draft.** Version 1.0.0-draft is marked unapproved, and the
-  engine prints that warning on every report. The open questions about the weights
-  are listed at the bottom of `rubric.md`.
+- **The rubric is a draft.** Version 1.1.0-draft is marked unapproved, and the
+  engine prints that warning on every report. The four open questions from the first
+  draft are now resolved in `rubric.md`, with all weights kept as drafted. Weights
+  change from here only on evidence from the gold set, not on argument.
 - **Process maps are shallow.** Steps are inferred by splitting the description on
   sentence and ordering boundaries and matching known verbs. Branches, loops, and
   parallel paths are not inferred. A step is attributed to a person only when that
   person is the subject at the start of the fragment, so many steps are left
   unattributed, which is the honest answer rather than a guessed one.
-- **PDF output needs native libraries.** WeasyPrint needs Pango and GObject. On
-  Windows that means the GTK runtime, and on Windows ARM64 that runtime is not
-  available, so the PDF cannot be produced on those machines. The markdown and HTML
-  are always written, the failure is reported plainly, and the HTML prints to PDF
-  from any browser.
+- **PDF output has two renderers and both are optional.** WeasyPrint is the intended
+  one, and it needs Pango and GObject. On Windows that means the GTK runtime, and on
+  Windows ARM64 that runtime does not exist, so WeasyPrint cannot render there at
+  all. When it is unavailable the engine falls back to headless Microsoft Edge, which
+  every Windows machine already has, so this adds no dependency. Edge does not support
+  the CSS that puts a running footer on the page, so an Edge rendered PDF has no page
+  footer. Everything the footer carries is repeated in the body, so nothing is lost.
+  If neither renderer works, the markdown and HTML are still written and the failure
+  is reported plainly. Set `AI_PROCESS_AUDIT_EDGE` to point at a specific Chromium
+  binary if yours is installed somewhere unusual.
+- **The WeasyPrint path is only exercised in CI.** Since it cannot run on the machine
+  this was built on, `.github/workflows/ci.yml` runs the whole pipeline on
+  ubuntu-latest with the native libraries installed, checks that a non empty PDF was
+  produced for every synthetic intake, and uploads the reports as build artifacts.
+  The report command is built to degrade rather than fail, so CI checks for the PDF
+  file itself rather than trusting the exit code.
 - **Nothing in a report is verified.** Volumes, times, and pain all come from the
   intake exactly as given.
 

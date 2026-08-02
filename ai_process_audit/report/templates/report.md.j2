@@ -21,8 +21,10 @@ Generated {{ generated_on }} against rubric {{ rubric.version }} by judge `{{ re
 | no. | Process | Recommendation | Score | Main limit |
 | --- | --- | --- | --- | --- |
 {% for item in opportunities %}
-| {{ item.rank }} | {{ item.process.name }} | {{ item.band.label }} | {{ item.weighted_score | score }} | {{ item.weakest.label }} ({{ item.weakest.raw_score }}/{{ rubric.scale_max }}) |
+| {{ item.rank }} | {{ item.process.name }} | {{ item.band.label }}{{ " (capped)" if item.was_capped else "" }} | {{ item.weighted_score | score }} | {{ item.weakest.label }} ({{ item.weakest.raw_score }}/{{ rubric.scale_max }}) |
 {% endfor %}
+
+The list is ordered by score. A capped process keeps its place in the order, because a cap limits what can be recommended and does not change what the process scored.
 
 Scores run from {{ "%.2f" | format(rubric.scale_min | float) }} to {{ "%.2f" | format(rubric.scale_max | float) }}. Bands are set in rubric {{ rubric.version }}:
 {% for band in rubric.bands %}
@@ -39,12 +41,26 @@ Each process is scored from {{ rubric.scale_min }} to {{ rubric.scale_max }} on 
 | {{ criterion.label }} | {{ "%.2f" | format(criterion.weight) }} | {{ "higher is better" if not criterion.is_inverted else "higher is worse, inverted by the engine" }} |
 {% endfor %}
 
+{% if rubric.band_caps %}
+One rule sits outside that arithmetic. A weighted average lets five good criteria outvote one bad one, which is right for a score and wrong for a recommendation:
+
+{% for cap in rubric.band_caps %}
+- Any process scoring {{ cap.at_or_above }} or more on {{ rubric.criterion(cap.criterion).label | lower }} cannot be recommended above {{ rubric.band_by_id(cap.max_band).label }}. {{ cap.reason }}
+{% endfor %}
+
+Where a cap applies, the score is still reported exactly as calculated and the band the score earned is shown next to it, so the number the cap overrode is visible.
+{% endif %}
+
 ---
 
 {% for item in opportunities %}
 ## {{ item.rank }}. {{ item.process.name }}
 
 **{{ item.band.label }}, weighted score {{ item.weighted_score | score }}.**
+
+{% for cap in item.applied_caps %}
+The score alone would place this in {{ cap.band_before.label }}. It is held at {{ cap.band_after.label }} because {{ cap.criterion_label | lower }} scored {{ cap.raw_score }} out of {{ rubric.scale_max }}. {{ cap.cap.reason }}
+{% endfor %}
 
 {% if item.process.owner %}
 Owner: {{ item.process.owner }}.

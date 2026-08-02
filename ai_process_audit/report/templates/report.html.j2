@@ -56,6 +56,7 @@
   .band-watch { color: #7a5a17; border-color: #7a5a17; background: #fbf3e2; }
   .band-not_a_fit { color: #6b7785; border-color: #6b7785; background: #f2f4f7; }
   .score { font-weight: bold; }
+  .capped { font-size: 7pt; color: #7a5a17; }
   .detail { border: 0.5pt solid #d5dce4; padding: 2.2mm 2.6mm; margin-bottom: 2mm; }
   .detail h3 { font-size: 9pt; margin: 0 0 1.4mm 0; }
   .crit { width: 100%; border-collapse: collapse; }
@@ -113,7 +114,10 @@
           {{ item.process.people.count }} person{{ "s" if item.process.people.count != 1 else "" }} &middot;
           {{ item.process_map.step_count }} steps</span>
       </td>
-      <td><span class="band band-{{ item.band.id }}">{{ item.band.label }}</span></td>
+      <td>
+        <span class="band band-{{ item.band.id }}">{{ item.band.label }}</span>
+        {% if item.was_capped %}<br><span class="capped">capped from {{ item.band_before_caps.label }}</span>{% endif %}
+      </td>
       <td class="num score">{{ item.weighted_score | score }}</td>
       <td class="pmeta">{{ item.weakest.label }} ({{ item.weakest.raw_score }}/{{ rubric.scale_max }})</td>
     </tr>
@@ -143,6 +147,11 @@
   Weighted score {{ top.weighted_score | score }} out of {{ rubric.scale_max }}.00, which places it in
   {{ top.band.label }}. The strongest part of the case is {{ top.strongest.label | lower }}. The part
   most likely to stop it is {{ top.weakest.label | lower }}.
+  {% for cap in top.applied_caps %}
+  The score alone would place this in {{ cap.band_before.label }}, and it is held at
+  {{ cap.band_after.label }} because {{ cap.criterion_label | lower }} scored {{ cap.raw_score }}
+  out of {{ rubric.scale_max }}. {{ cap.cap.reason }}
+  {% endfor %}
 </p>
 {% endif %}
 
@@ -153,7 +162,12 @@
   <li>Take the highest ranked item only, and time box a test of it before committing to anything.</li>
 </ol>
 
-<p class="disclosure">{{ disclosure }}</p>
+<p class="disclosure">
+  {{ disclosure }}
+  Generated {{ generated_on }} against rubric {{ rubric.version }} by judge
+  {{ result.judge_id }} in {{ result.judge_mode }} mode. This line repeats what the page
+  footer says, because not every PDF renderer produces the footer.
+</p>
 
 </body>
 </html>

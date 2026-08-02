@@ -26,7 +26,13 @@ from ai_process_audit.model.normalize import items_per_year, normalize_intake, s
 from ai_process_audit.pipeline import audit_document
 from ai_process_audit.processmap.mermaid import render_mermaid
 from ai_process_audit.processmap.steps import build_process_map
-from ai_process_audit.report.render import render_html, render_markdown, write_reports
+from ai_process_audit.report.render import (
+    PdfUnavailableError,
+    find_edge,
+    render_html,
+    render_markdown,
+    write_reports,
+)
 from ai_process_audit.scoring.judge import (
     LIVE_ENV_FLAG,
     JudgeVerdict,
@@ -76,6 +82,26 @@ def minimal_intake() -> dict:
             }
         ],
     }
+
+
+def high_scoring_risky_intake() -> dict:
+    """An intake that scores well on everything and is maximally risky.
+
+    Used to exercise the band cap, which only does anything when a process would
+    otherwise be recommended above a pilot.
+    """
+    document = minimal_intake()
+    process = document["processes"][0]
+    process["frequency"] = "daily"
+    process["volume"] = {"count": 500, "unit": "forms", "period": "per_day"}
+    process["people_involved"]["hours_per_run"] = 8
+    process["pain_description"] = (
+        "Errors reach customers, staff work overtime and weekends, two people quit, "
+        "and the business lost money on refunds and a penalty."
+    )
+    process["data_notes"] = "Everything is in the database with an api available."
+    process["risk_flags"] = ["safety_critical"]
+    return document
 
 
 class TestValidator(unittest.TestCase):
@@ -241,6 +267,44 @@ class TestRubric(unittest.TestCase):
         self.assertEqual(self.rubric.effective_score("implementation_risk", 1), 5.0)
         self.assertEqual(self.rubric.effective_score("pain", 5), 5.0)
 
+    def test_the_risk_cap_is_defined(self):
+        self.assertTrue(self.rubric.band_caps)
+        cap = self.rubric.band_caps[0]
+        self.assertEqual(cap.criterion, "implementation_risk")
+        self.assertEqual(cap.at_or_above, 5)
+        self.assertEqual(cap.max_band, "pilot")
+        self.assertTrue(cap.reason)
+
+    def test_cap_lowers_a_strong_band_when_risk_is_top_of_scale(self):
+        strong = self.rubric.band_for(4.6)
+        self.assertEqual(strong.id, "strong")
+        band, applied = self.rubric.apply_caps(strong, {"implementation_risk": 5})
+        self.assertEqual(band.id, "pilot")
+        self.assertEqual(len(applied), 1)
+        self.assertEqual(applied[0].band_before.id, "strong")
+        self.assertEqual(applied[0].band_after.id, "pilot")
+
+    def test_cap_does_nothing_below_the_threshold(self):
+        strong = self.rubric.band_for(4.6)
+        band, applied = self.rubric.apply_caps(strong, {"implementation_risk": 4})
+        self.assertEqual(band.id, "strong")
+        self.assertEqual(applied, ())
+
+    def test_cap_never_raises_a_band(self):
+        watch = self.rubric.band_for(2.5)
+        band, applied = self.rubric.apply_caps(watch, {"implementation_risk": 5})
+        self.assertEqual(band.id, "watch")
+        self.assertEqual(applied, ())
+
+    def test_cap_referring_to_an_unknown_criterion_is_rejected(self):
+        text = (REPO_ROOT / "rubric.md").read_text(encoding="utf-8")
+        broken = text.replace('"criterion": "implementation_risk"', '"criterion": "vibes"')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rubric.md"
+            path.write_text(broken, encoding="utf-8")
+            with self.assertRaises(RubricError):
+                load_rubric(path)
+
     def test_bands_are_ordered_and_cover_the_scale(self):
         self.assertEqual(self.rubric.band_for(4.5).id, "strong")
         self.assertEqual(self.rubric.band_for(3.0).id, "pilot")
@@ -385,6 +449,24 @@ class TestScoring(unittest.TestCase):
             by_id["risky-process"].weighted_score, by_id["a-process"].weighted_score
         )
 
+    def test_top_risk_process_cannot_be_recommended_above_a_pilot(self):
+        # A process that scores well on everything and is maximally risky. The cap
+        # must hold it back, and the score itself must be left alone.
+        result = audit_document(high_scoring_risky_intake())
+        opportunity = result.opportunities[0]
+        self.assertEqual(opportunity.criterion("implementation_risk").raw_score, 5)
+        self.assertEqual(opportunity.band_before_caps.id, "strong")
+        self.assertEqual(opportunity.band.id, "pilot")
+        self.assertTrue(opportunity.was_capped)
+        # The score is reported as calculated, not lowered to match the band.
+        self.assertGreaterEqual(opportunity.weighted_score, 4.0)
+
+    def test_uncapped_process_records_no_cap(self):
+        result = audit_document(minimal_intake())
+        opportunity = result.opportunities[0]
+        self.assertFalse(opportunity.was_capped)
+        self.assertEqual(opportunity.band.id, opportunity.band_before_caps.id)
+
     def test_verdict_from_another_rubric_version_is_refused(self):
         from ai_process_audit.scoring.score import score_process
 
@@ -437,8 +519,37 @@ class TestReport(unittest.TestCase):
             self.assertEqual(len(paths.mermaid), len(self.intake.processes))
             if paths.pdf is None:
                 self.assertIsNotNone(paths.pdf_error)
+                self.assertIsNone(paths.pdf_renderer)
             else:
                 self.assertTrue(paths.pdf.exists())
+                self.assertIn(paths.pdf_renderer, {"weasyprint", "edge"})
+                self.assertIsNone(paths.pdf_error)
+
+    def test_a_capped_process_says_so_in_both_formats(self):
+        result = audit_document(high_scoring_risky_intake())
+        opportunity = result.opportunities[0]
+        self.assertTrue(opportunity.was_capped, "the fixture is meant to trip the cap")
+        text = render_markdown(result, generated_on=date(2026, 8, 1))
+        html = render_html(result, generated_on=date(2026, 8, 1))
+        for name, content in (("markdown", text), ("html", html)):
+            with self.subTest(output=name):
+                self.assertIn("capped", content.lower())
+                # The band the score earned must still be visible, so the reader can
+                # see what the cap overrode.
+                self.assertIn(opportunity.band_before_caps.label, content)
+
+    def test_reports_explain_the_cap_rule(self):
+        text = render_markdown(self.result, generated_on=date(2026, 8, 1))
+        self.assertIn("cannot be recommended above", text)
+
+    def test_disclosure_survives_a_renderer_without_page_footers(self):
+        # Edge does not render the CSS page footer, so the same facts must appear in
+        # the body or an Edge rendered PDF would lose them.
+        html = render_html(self.result, generated_on=date(2026, 8, 1))
+        body = html.split("</style>", 1)[1]
+        self.assertIn("generated by an AI system", body)
+        self.assertIn("2026-08-01", body)
+        self.assertIn(self.rubric.version, body)
 
     def test_no_em_dashes_anywhere_in_the_output(self):
         text = render_markdown(self.result, generated_on=date(2026, 8, 1))
@@ -449,11 +560,87 @@ class TestReport(unittest.TestCase):
                 self.assertNotIn("&mdash;", content)
 
 
+class TestPdfFallback(unittest.TestCase):
+    """The Edge fallback, which is what produces a PDF on Windows ARM64."""
+
+    def setUp(self):
+        self.intake = normalize_intake(validate_intake(minimal_intake()))
+        self.result = score_intake(self.intake)
+
+    def test_missing_edge_reports_plainly_rather_than_crashing(self):
+        import os
+
+        from ai_process_audit.report.render import EDGE_ENV_VAR, render_pdf_with_edge
+
+        previous = os.environ.get(EDGE_ENV_VAR)
+        os.environ[EDGE_ENV_VAR] = str(REPO_ROOT / "no-such-browser.exe")
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                html_path = Path(directory) / "report.html"
+                html_path.write_text("<p>hello</p>", encoding="utf-8")
+                with self.assertRaises(PdfUnavailableError) as caught:
+                    render_pdf_with_edge(html_path, Path(directory) / "report.pdf")
+                self.assertIn("Edge was not found", str(caught.exception))
+        finally:
+            if previous is None:
+                os.environ.pop(EDGE_ENV_VAR, None)
+            else:
+                os.environ[EDGE_ENV_VAR] = previous
+
+    @unittest.skipIf(find_edge() is None, "Edge is not installed on this machine")
+    def test_edge_renders_a_real_pdf(self):
+        from ai_process_audit.report.render import render_pdf_with_edge
+
+        with tempfile.TemporaryDirectory() as directory:
+            html_path = Path(directory) / "report.html"
+            html_path.write_text(
+                render_html(self.result, generated_on=date(2026, 8, 1)), encoding="utf-8"
+            )
+            pdf_path = render_pdf_with_edge(html_path, Path(directory) / "report.pdf")
+            self.assertTrue(pdf_path.exists())
+            self.assertGreater(pdf_path.stat().st_size, 1000)
+            with pdf_path.open("rb") as handle:
+                self.assertEqual(handle.read(5), b"%PDF-")
+
+    @unittest.skipIf(find_edge() is None, "Edge is not installed on this machine")
+    def test_a_relative_destination_still_works(self):
+        # Edge resolves a relative output path against its own working directory and
+        # then exits zero having written nothing, which looked like a missing browser
+        # rather than a bad path.
+        import os
+
+        from ai_process_audit.report.render import render_pdf_with_edge
+
+        previous_cwd = os.getcwd()
+        with tempfile.TemporaryDirectory() as directory:
+            try:
+                os.chdir(directory)
+                html_path = Path("report.html")
+                html_path.write_text("<p>relative</p>", encoding="utf-8")
+                pdf_path = render_pdf_with_edge(html_path, Path("nested") / "report.pdf")
+                self.assertTrue(pdf_path.exists())
+                self.assertGreater(pdf_path.stat().st_size, 500)
+            finally:
+                os.chdir(previous_cwd)
+
+    @unittest.skipIf(find_edge() is None, "Edge is not installed on this machine")
+    def test_a_stale_pdf_is_not_mistaken_for_a_fresh_one(self):
+        from ai_process_audit.report.render import render_pdf_with_edge
+
+        with tempfile.TemporaryDirectory() as directory:
+            html_path = Path(directory) / "report.html"
+            html_path.write_text("<p>fresh</p>", encoding="utf-8")
+            pdf_path = Path(directory) / "report.pdf"
+            pdf_path.write_bytes(b"stale content that is not a pdf")
+            render_pdf_with_edge(html_path, pdf_path)
+            with pdf_path.open("rb") as handle:
+                self.assertEqual(handle.read(5), b"%PDF-")
+
 class TestNoEmDashesInSource(unittest.TestCase):
     """The no em dash rule applies to the repository, not only to reports."""
 
     def test_repository_text_has_no_em_dashes(self):
-        patterns = ("*.py", "*.md", "*.json", "*.j2", "*.txt", "*.toml")
+        patterns = ("*.py", "*.md", "*.json", "*.j2", "*.txt", "*.toml", "*.yml", "*.yaml")
         offenders = []
         for pattern in patterns:
             for path in REPO_ROOT.rglob(pattern):

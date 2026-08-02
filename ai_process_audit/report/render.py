@@ -6,16 +6,31 @@ Three outputs are produced from one set of results:
 
   report.md   the full record, including every process map and every rationale
   report.html the one page summary, styled for print
-  report.pdf  the same one page summary through WeasyPrint
+  report.pdf  the same one page summary
 
-The PDF is the only output with an external system dependency. WeasyPrint needs the
-Pango and GObject native libraries, which are not present on every machine. When
-they are missing, the markdown and HTML are still written and the caller is told
-plainly what happened, because a missing PDF should not lose the analysis.
+The PDF is the only output with an external system dependency, so there are two ways
+to produce it and both are optional:
+
+  1. WeasyPrint, which is the intended renderer. It needs the Pango and GObject
+     native libraries. On Windows that means the GTK runtime, and on Windows ARM64
+     that runtime does not exist, so WeasyPrint cannot render there at all.
+  2. Microsoft Edge in headless mode, which every Windows machine already has. It is
+     tried only when WeasyPrint is unavailable, and it adds no dependency because it
+     is a program that is already installed rather than a package.
+
+If neither works, the markdown and HTML are still written and the caller is told
+plainly what happened, because a missing PDF should not lose the analysis. The two
+renderers do not produce identical files: Edge does not support the CSS that puts a
+running footer on the page, so the Edge PDF has no page footer. Everything the
+footer carries also appears in the body, so nothing is lost.
 """
 
 from __future__ import annotations
 
+import os
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -40,19 +55,31 @@ DISCLOSURE = (
 SUMMARY_ROW_LIMIT = 8
 
 
+# Where Edge usually lives on Windows. Set AI_PROCESS_AUDIT_EDGE to point at a
+# specific Chromium binary instead, which is also how to use Chrome rather than Edge.
+EDGE_ENV_VAR = "AI_PROCESS_AUDIT_EDGE"
+EDGE_CANDIDATES = (
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+)
+
+EDGE_TIMEOUT_SECONDS = 120
+
+
 class PdfUnavailableError(RuntimeError):
-    """Raised when WeasyPrint cannot run on this machine."""
+    """Raised when no renderer on this machine could produce the PDF."""
 
 
 @dataclass(frozen=True)
 class ReportPaths:
-    """Where each output landed. pdf is None when WeasyPrint could not run."""
+    """Where each output landed. pdf is None when no renderer could produce one."""
 
     markdown: Path
     html: Path
     pdf: Path | None
     mermaid: tuple[Path, ...] = ()
     pdf_error: str | None = None
+    pdf_renderer: str | None = None
 
 
 def _format_number(value: float) -> str:
@@ -95,6 +122,18 @@ def _context(result: AuditResult, generated_on: date | None) -> dict:
         warnings.append(
             f"Rubric {result.rubric.version} is a draft and has not been approved, so "
             "the weights behind these rankings are still open to change."
+        )
+    capped = [
+        opportunity.process.name
+        for opportunity in result.opportunities
+        if opportunity.was_capped
+    ]
+    if capped:
+        warnings.append(
+            "The recommendation for "
+            + ", ".join(capped)
+            + " was capped below what the score earned, because a mistake there would "
+            "be a serious event. The score is reported as calculated."
         )
     assumed = [
         opportunity.process.name
@@ -157,6 +196,89 @@ def render_pdf(html: str, destination: Path, base_url: Path | None = None) -> Pa
     return destination
 
 
+def find_edge() -> Path | None:
+    """Locate a Chromium binary that can print to PDF, or return None."""
+    override = os.environ.get(EDGE_ENV_VAR)
+    if override:
+        path = Path(override)
+        return path if path.exists() else None
+    on_path = shutil.which("msedge")
+    if on_path:
+        return Path(on_path)
+    for candidate in EDGE_CANDIDATES:
+        if Path(candidate).exists():
+            return Path(candidate)
+    return None
+
+
+def render_pdf_with_edge(html_path: Path, destination: Path) -> Path:
+    """Print an HTML file to PDF using headless Edge.
+
+    This is the fallback for machines where WeasyPrint cannot load its libraries. It
+    shells out to a browser that is already installed rather than adding a package.
+    """
+    edge = find_edge()
+    if edge is None:
+        raise PdfUnavailableError(
+            "Microsoft Edge was not found, so the fallback PDF renderer could not run "
+            f"either. Set {EDGE_ENV_VAR} to the full path of msedge.exe or another "
+            "Chromium browser if it is installed somewhere unusual."
+        )
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if destination.exists():
+        # Edge appends nothing and reports success even when it wrote nothing, so an
+        # old file left in place would look like a fresh render.
+        destination.unlink()
+
+    # Edge resolves a relative output path against its own working directory, not
+    # ours, and then reports success after failing to write. Give it an absolute one.
+    destination = destination.resolve()
+    source_url = html_path.resolve().as_uri()
+    with tempfile.TemporaryDirectory() as profile_dir:
+        command = [
+            str(edge),
+            "--headless",
+            "--disable-gpu",
+            "--no-pdf-header-footer",
+            # A throwaway profile, so this cannot disturb a running Edge session.
+            f"--user-data-dir={profile_dir}",
+            # A brand new profile otherwise triggers the first run and sync flows,
+            # and Edge exits zero without ever printing. These four are what make the
+            # throwaway profile usable rather than a silent failure.
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-sync",
+            "--disable-extensions",
+            f"--print-to-pdf={destination}",
+            source_url,
+        ]
+        try:
+            completed = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=EDGE_TIMEOUT_SECONDS,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            raise PdfUnavailableError(
+                f"Edge did not finish printing within {EDGE_TIMEOUT_SECONDS} seconds, "
+                "so no PDF was written."
+            ) from None
+        except OSError as exc:
+            raise PdfUnavailableError(f"Edge could not be started: {exc}") from exc
+
+    if not destination.exists():
+        detail = (completed.stderr or completed.stdout or "").strip().splitlines()
+        last_line = detail[-1] if detail else "no output"
+        raise PdfUnavailableError(
+            f"Edge ran but wrote no PDF (exit code {completed.returncode}). "
+            f"Last thing it said: {last_line}"
+        )
+    return destination
+
+
 def write_reports(
     result: AuditResult,
     output_dir: str | Path,
@@ -187,16 +309,24 @@ def write_reports(
             mermaid_paths.append(path)
 
     pdf_path: Path | None = None
-    pdf_error: str | None = None
+    pdf_renderer: str | None = None
+    failures: list[str] = []
     try:
         pdf_path = render_pdf(html, output_dir / "report.pdf")
+        pdf_renderer = "weasyprint"
     except PdfUnavailableError as exc:
-        pdf_error = str(exc)
+        failures.append(str(exc))
+        try:
+            pdf_path = render_pdf_with_edge(html_path, output_dir / "report.pdf")
+            pdf_renderer = "edge"
+        except PdfUnavailableError as fallback_exc:
+            failures.append(str(fallback_exc))
 
     return ReportPaths(
         markdown=markdown_path,
         html=html_path,
         pdf=pdf_path,
         mermaid=tuple(mermaid_paths),
-        pdf_error=pdf_error,
+        pdf_error=None if pdf_path is not None else " ".join(failures),
+        pdf_renderer=pdf_renderer,
     )

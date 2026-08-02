@@ -97,6 +97,19 @@ def _result_to_dict(result: AuditResult) -> dict:
                 "weighted_score": item.weighted_score,
                 "band": item.band.id,
                 "band_label": item.band.label,
+                "band_before_caps": (
+                    item.band_before_caps.id if item.band_before_caps else item.band.id
+                ),
+                "applied_caps": [
+                    {
+                        "criterion": cap.cap.criterion,
+                        "raw_score": cap.raw_score,
+                        "band_before": cap.band_before.id,
+                        "band_after": cap.band_after.id,
+                        "reason": cap.cap.reason,
+                    }
+                    for cap in item.applied_caps
+                ],
                 "step_count": item.process_map.step_count,
                 "criteria": {
                     criterion.id: {
@@ -125,6 +138,11 @@ def _print_ranking(result: AuditResult) -> None:
         print(f"{item.rank}. {item.process.name}")
         print(f"   {item.band.label} at {item.weighted_score:.2f}")
         print(f"   held back by {item.weakest.label.lower()} at {item.weakest.raw_score}")
+        for cap in item.applied_caps:
+            print(
+                f"   capped down from {cap.band_before.label} because "
+                f"{cap.criterion_label.lower()} is {cap.raw_score}"
+            )
     if result.judge_mode == "stub":
         print()
         print(
@@ -201,7 +219,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Markdown: {paths.markdown}")
             print(f"HTML:     {paths.html}")
             if paths.pdf is not None:
-                print(f"PDF:      {paths.pdf}")
+                note = (
+                    " (rendered by headless Edge, so it has no page footer)"
+                    if paths.pdf_renderer == "edge"
+                    else ""
+                )
+                print(f"PDF:      {paths.pdf}{note}")
             else:
                 print("PDF:      not written.")
                 print(f"          {paths.pdf_error}")

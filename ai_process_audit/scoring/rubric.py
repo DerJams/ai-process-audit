@@ -56,6 +56,33 @@ class Band:
 
 
 @dataclass(frozen=True)
+class BandCap:
+    """A rule that limits the recommendation regardless of the weighted score.
+
+    A weighted average lets five good criteria outvote one bad one, which is correct
+    for a score and wrong for a recommendation when the bad one is that a mistake
+    would be a serious event. A cap sits outside the arithmetic and never changes the
+    score, only what may be recommended on the strength of it.
+    """
+
+    criterion: str
+    at_or_above: int
+    max_band: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class AppliedCap:
+    """A record that a cap changed the recommendation, kept so the report can say so."""
+
+    cap: BandCap
+    criterion_label: str
+    raw_score: int
+    band_before: Band
+    band_after: Band
+
+
+@dataclass(frozen=True)
 class Rubric:
     """The full rubric, as read from rubric.md."""
 
@@ -66,6 +93,7 @@ class Rubric:
     criteria: tuple[Criterion, ...]
     bands: tuple[Band, ...]
     source_path: Path
+    band_caps: tuple[BandCap, ...] = ()
 
     @property
     def criterion_ids(self) -> tuple[str, ...]:
@@ -89,10 +117,47 @@ class Rubric:
         return float(raw_score)
 
     def band_for(self, weighted_score: float) -> Band:
+        """The band a score earns before any cap is considered."""
         for band in self.bands:
             if weighted_score >= band.min_score:
                 return band
         return self.bands[-1]
+
+    def band_by_id(self, band_id: str) -> Band:
+        for band in self.bands:
+            if band.id == band_id:
+                return band
+        raise RubricError(f"No band with id {band_id!r} in rubric {self.version}")
+
+    def apply_caps(
+        self, band: Band, raw_scores: dict[str, int]
+    ) -> tuple[Band, tuple[AppliedCap, ...]]:
+        """Lower the band where a cap rule applies.
+
+        Returns the band to recommend and a record of every cap that bit. The
+        weighted score is never touched, so a reader can always see the number the
+        cap overrode. Where several caps apply, the lowest ceiling wins.
+        """
+        applied: list[AppliedCap] = []
+        current = band
+        for cap in self.band_caps:
+            raw = raw_scores.get(cap.criterion)
+            if raw is None or raw < cap.at_or_above:
+                continue
+            ceiling = self.band_by_id(cap.max_band)
+            if current.min_score <= ceiling.min_score:
+                continue  # already at or below the ceiling, so the cap changes nothing
+            applied.append(
+                AppliedCap(
+                    cap=cap,
+                    criterion_label=self.criterion(cap.criterion).label,
+                    raw_score=raw,
+                    band_before=current,
+                    band_after=ceiling,
+                )
+            )
+            current = ceiling
+        return current, tuple(applied)
 
 
 def _parse_spec(text: str, path: Path) -> dict:
@@ -158,6 +223,28 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
     if not bands:
         raise RubricError(f"Rubric spec in {path} defines no bands")
 
+    band_ids = {band.id for band in bands}
+    caps: list[BandCap] = []
+    for entry in spec.get("band_caps", []):
+        if entry["criterion"] not in seen_ids:
+            raise RubricError(
+                f"Band cap in {path} refers to criterion {entry['criterion']!r}, "
+                "which is not defined in this rubric"
+            )
+        if entry["max_band"] not in band_ids:
+            raise RubricError(
+                f"Band cap in {path} refers to band {entry['max_band']!r}, "
+                "which is not defined in this rubric"
+            )
+        caps.append(
+            BandCap(
+                criterion=entry["criterion"],
+                at_or_above=int(entry["at_or_above"]),
+                max_band=entry["max_band"],
+                reason=entry.get("reason", ""),
+            )
+        )
+
     scale = spec["scale"]
     return Rubric(
         version=spec["version"],
@@ -167,6 +254,7 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
         criteria=tuple(criteria),
         bands=bands,
         source_path=path,
+        band_caps=tuple(caps),
     )
 
 

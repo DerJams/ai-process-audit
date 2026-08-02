@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from ..model.models import Intake, Process
 from ..processmap.steps import ProcessMap, build_process_map
 from .judge import CriterionScore, Judge, JudgeVerdict, get_judge
-from .rubric import Band, Rubric, load_rubric
+from .rubric import AppliedCap, Band, Rubric, load_rubric
 
 
 @dataclass(frozen=True)
@@ -46,6 +46,15 @@ class Opportunity:
     weighted_score: float
     band: Band
     rank: int = 0
+    # The band the weighted score earned before any cap. Equal to band when no cap
+    # applied. Kept so the report can show the number a cap overrode rather than
+    # quietly presenting the capped result as what the arithmetic said.
+    band_before_caps: Band | None = None
+    applied_caps: tuple[AppliedCap, ...] = ()
+
+    @property
+    def was_capped(self) -> bool:
+        return bool(self.applied_caps)
 
     @property
     def strongest(self) -> ScoredCriterion:
@@ -108,18 +117,28 @@ def score_process(
         )
 
     weighted = round(sum(item.contribution for item in scored), 4)
+    earned_band = rubric.band_for(weighted)
+    final_band, applied_caps = rubric.apply_caps(
+        earned_band, {item.id: item.raw_score for item in scored}
+    )
     return Opportunity(
         process=process,
         process_map=process_map,
         verdict=verdict,
         criteria=tuple(scored),
         weighted_score=weighted,
-        band=rubric.band_for(weighted),
+        band=final_band,
+        band_before_caps=earned_band,
+        applied_caps=applied_caps,
     )
 
 
 def rank(opportunities: list[Opportunity]) -> tuple[Opportunity, ...]:
     """Order opportunities best first.
+
+    Ordering is by weighted score, not by capped band. A cap limits what may be
+    recommended, and the rubric is explicit that it does not change the score, so a
+    capped process keeps its place in the list and carries its cap notice with it.
 
     Ties break on process id rather than on input order, so that two runs over the
     same intake always produce the same report.
@@ -137,6 +156,8 @@ def rank(opportunities: list[Opportunity]) -> tuple[Opportunity, ...]:
             weighted_score=item.weighted_score,
             band=item.band,
             rank=position,
+            band_before_caps=item.band_before_caps,
+            applied_caps=item.applied_caps,
         )
         for position, item in enumerate(ordered, start=1)
     )

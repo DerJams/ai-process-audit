@@ -1,6 +1,6 @@
 # Automation Opportunity Rubric
 
-**Version: 1.0.0-draft**
+**Version: 1.1.0-draft**
 **Status: DRAFT. Not approved. Weights and criteria are proposals awaiting review.**
 
 This file is the single source of truth for scoring. The engine reads the machine
@@ -126,26 +126,65 @@ call it was.
 | Watch list | 2.00 to 2.99 | Not now. Revisit if volume grows or the data improves. |
 | Not a fit | Below 2.00 | Automation is not the answer to this one. |
 
-## Open questions for review
+## Band caps
 
-These are the decisions this draft makes that most deserve a second opinion:
+A weighted average can be talked round by its own arithmetic. A process that is
+frequent, high volume, painful, and well recorded will score above 4.00 even when
+getting it wrong would be a serious event, because five good criteria outvote one
+bad one. That is the right behaviour for a score and the wrong behaviour for a
+recommendation.
 
-1. **Pain and data availability both carry 0.20.** Data availability is the criterion
-   that most often decides whether a build succeeds. An argument exists for giving it
-   0.25 and taking 0.05 from frequency.
-2. **Implementation risk at 0.15 may be too light.** A process scoring 5 on risk can
-   still land in Worth a pilot if everything else is high. A hard rule that caps the
-   band when risk is 5 may be safer than a weight.
-3. **Frequency and volume are correlated** in most real intakes, so together at 0.30
-   they may be double counting the same signal.
-4. **Return band is partly a function of the other five.** Asking the judge to score
-   it independently invites inconsistency. It could be computed instead of judged.
+So one rule sits outside the arithmetic:
+
+**A process scoring 5 on implementation risk cannot be recommended above Worth a
+pilot, whatever its weighted score.**
+
+The score itself is not changed. It is reported exactly as calculated, and the
+report says the cap was applied and why. A reader who disagrees can see the number
+the cap overrode.
+
+This is a cap and not a weight on purpose. Raising the weight of implementation risk
+would move every process a little, including the ones where risk is a 2 and the
+weight change is just noise. The cap does nothing at all until risk hits the top of
+the scale, which is where the anchor says a single wrong output is a serious event.
+That is a statement about what may be recommended, not a statement about how much
+risk counts, and the two should not be confused by hiding one inside the other.
+
+## Decisions taken on the open questions
+
+The first draft listed four questions. They are resolved below with the simplest
+rule that can be defended, on the principle that a rubric nobody can explain is
+worse than one that is slightly wrong in a way anyone can see.
+
+**These weights do not change again except on evidence from the gold set.** Not on
+argument, not on a reading of a single report that looks off, and not because a
+number feels low. If a weight is wrong, the failure analysis will show it as a
+criterion that consistently disagrees with the labels in one direction, and that is
+what a change has to cite.
+
+1. **Pain and data availability stay level at 0.20 each.** The case for lifting data
+   availability is real, but it rests on a claim about which criterion best predicts
+   a successful build, and nothing here has measured that yet. Leave them level and
+   let the failure analysis argue for a change.
+2. **Implementation risk stays at 0.15**, and the band cap above handles the case
+   that prompted the question.
+3. **Frequency and volume both stay at 0.15.** They are correlated but not the same:
+   a monthly process over a thousand records and a daily process over one record
+   need different builds, and separating them is what makes that visible. If the
+   gold set shows them moving together, merge them into one criterion at 0.30 rather
+   than quietly shading one down.
+4. **Return band stays judged rather than computed.** Computing it from the others
+   would make it a restatement of scores already counted, which is real double
+   counting, unlike question 3. It is scored only on time spent and the cost of
+   errors the process produces today, and the judge is told not to look at the other
+   criteria when scoring it.
 
 ## Change log
 
 | Version | Date | Change |
 | --- | --- | --- |
 | 1.0.0-draft | 2026-08-02 | First draft. Not approved for use. |
+| 1.1.0-draft | 2026-08-02 | Added the implementation risk band cap. Resolved the four open questions, keeping all weights as drafted. Weights now change only on gold set evidence. Still not approved. |
 
 ## Machine readable specification
 
@@ -153,7 +192,7 @@ The engine parses the block below. Nothing else in this file is read by code.
 
 ```rubric-spec
 {
-  "version": "1.0.0-draft",
+  "version": "1.1.0-draft",
   "approved": false,
   "scale": {"min": 1, "max": 5},
   "criteria": [
@@ -205,6 +244,14 @@ The engine parses the block below. Nothing else in this file is read by code.
     {"id": "pilot", "label": "Worth a pilot", "min_score": 3.00},
     {"id": "watch", "label": "Watch list", "min_score": 2.00},
     {"id": "not_a_fit", "label": "Not a fit", "min_score": 0.00}
+  ],
+  "band_caps": [
+    {
+      "criterion": "implementation_risk",
+      "at_or_above": 5,
+      "max_band": "pilot",
+      "reason": "Getting this wrong is a serious event, so it cannot be recommended above a time boxed pilot however well it scores elsewhere."
+    }
   ]
 }
 ```

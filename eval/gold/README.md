@@ -29,20 +29,32 @@ python -m eval.make_gold_template eval/intakes/redwood-plumbing.json
 That writes `eval/gold/redwood-plumbing.gold.json` with every score set to null.
 Then, with rubric.md open beside you:
 
-1. Set `labelled_by` to your name. The harness refuses a file without it.
+1. Set `labelled_by` to your name. The harness refuses a file that has scores in it
+   but does not say whose they are.
 2. Set `labelled_on` to the date.
 3. Read one process in the intake, then score all six criteria for it before moving
    to the next. Scoring one criterion across every process invites you to rank
    rather than to score against the anchors.
 4. Score implementation risk as risk. Higher is riskier. The engine does the
    inversion, so do not invert it yourself.
-5. Where the intake does not say, score 3 and write why in `notes`. The rubric asks
-   the engine to do the same, so doing anything else here measures the wrong thing.
+5. Where the intake does not say, score 3 and write why in the rationale. The rubric
+   asks the engine to do the same, so doing anything else here measures the wrong
+   thing.
 6. Leave a score as null if you genuinely have not decided. Nulls are counted and
    reported, not silently treated as agreement.
 
-A note is worth writing whenever the score was a close call, because that is
-exactly the case where a disagreement later is interesting rather than a bug.
+Each process has two blocks. `criteria` holds the scores, and `rationales` holds one
+sentence of your reasoning per criterion, keyed by the same criterion id. The
+rationale is what the failure analysis prints next to the engine's reasoning, which
+is the comparison that tells you whether a disagreement is the engine being wrong or
+the anchor being unclear. There is also a `notes` field per process for anything that
+applies to the whole process, and it is used as a fallback wherever a criterion has
+no rationale of its own.
+
+A rationale is worth writing for every score and essential for a close call, because
+a close call is exactly where a later disagreement is interesting rather than a bug.
+Rationales are never compared automatically and never scored. They are there to be
+read by a person working out what went wrong.
 
 ## What the harness measures
 

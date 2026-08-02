@@ -1,10 +1,10 @@
 {
-  "gold_format": "1",
+  "gold_format": "2",
   "intake_file": "../intakes/northgate-lettings.json",
   "rubric_version": "1.2.1-draft",
   "labelled_by": "",
   "labelled_on": "",
-  "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Do not change a label to make the engine agree.",
+  "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Put your reasoning for a score in rationales under the same criterion id, which is what the failure analysis prints next to the engine's reasoning. Do not change a label to make the engine agree.",
   "processes": {
     "maintenance-triage": {
       "process_name": "Triaging tenant maintenance reports",
@@ -16,6 +16,14 @@
         "data_availability": null,
         "implementation_risk": null,
         "return_band": null
+      },
+      "rationales": {
+        "pain": "",
+        "frequency": "",
+        "volume": "",
+        "data_availability": "",
+        "implementation_risk": "",
+        "return_band": ""
       }
     },
     "rent-arrears-chasing": {
@@ -28,6 +36,14 @@
         "data_availability": null,
         "implementation_risk": null,
         "return_band": null
+      },
+      "rationales": {
+        "pain": "",
+        "frequency": "",
+        "volume": "",
+        "data_availability": "",
+        "implementation_risk": "",
+        "return_band": ""
       }
     },
     "tenant-referencing": {
@@ -40,6 +56,14 @@
         "data_availability": null,
         "implementation_risk": null,
         "return_band": null
+      },
+      "rationales": {
+        "pain": "",
+        "frequency": "",
+        "volume": "",
+        "data_availability": "",
+        "implementation_risk": "",
+        "return_band": ""
       }
     },
     "landlord-statements": {
@@ -52,6 +76,14 @@
         "data_availability": null,
         "implementation_risk": null,
         "return_band": null
+      },
+      "rationales": {
+        "pain": "",
+        "frequency": "",
+        "volume": "",
+        "data_availability": "",
+        "implementation_risk": "",
+        "return_band": ""
       }
     },
     "deposit-return": {
@@ -64,6 +96,14 @@
         "data_availability": null,
         "implementation_risk": null,
         "return_band": null
+      },
+      "rationales": {
+        "pain": "",
+        "frequency": "",
+        "volume": "",
+        "data_availability": "",
+        "implementation_risk": "",
+        "return_band": ""
       }
     }
   }

@@ -174,6 +174,12 @@ def _check_gold_shape(gold: dict[str, Any], path: Path, rubric: Rubric) -> None:
                 f"{path} labels criteria that are not in rubric {rubric.version} for "
                 f"process {process_id}: {', '.join(unknown)}"
             )
+        stray = sorted(set(entry.get("rationales", {})) - known)
+        if stray:
+            raise GoldError(
+                f"{path} has rationales for criteria that are not in rubric "
+                f"{rubric.version} for process {process_id}: {', '.join(stray)}"
+            )
 
 
 def _gold_weighted_score(
@@ -226,6 +232,7 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
             )
 
         labelled_criteria = entry.get("criteria", {})
+        rationales = entry.get("rationales", {})
         labelled_any = False
         for criterion in rubric.criteria:
             gold_value = labelled_criteria.get(criterion.id)
@@ -245,7 +252,13 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
                         gold_score=int(gold_value),
                         engine_score=engine.raw_score,
                         engine_rationale=engine.rationale,
-                        gold_note=entry.get("notes") or None,
+                        # The reasoning written for this specific criterion, falling
+                        # back to the process level note when none was written.
+                        gold_note=(
+                            (rationales.get(criterion.id) or "").strip()
+                            or (entry.get("notes") or "").strip()
+                            or None
+                        ),
                     )
                 )
 
@@ -378,8 +391,8 @@ def write_failure_analysis(
     )
     lines.append("")
     lines.append(
-        "Every row below is a place the engine and the labels disagree. The engine "
-        "rationale is shown as written, so that a wrong score and a bad reason can be "
+        "Every row below is a place the engine and the labels disagree. Both sets of "
+        "reasoning are shown as written, so that a wrong score and a bad reason can be "
         "told apart. A score that is right for the wrong reason is also a failure and "
         "will not show up here, which is a limit of this file."
     )
@@ -443,9 +456,14 @@ def write_failure_analysis(
             f"- Engine: **{disagreement.engine_score}** "
             f"({disagreement.difference:+d} against the label)"
         )
-        lines.append(f"- Engine rationale: {disagreement.engine_rationale}")
+        lines.append(f"- Engine reasoning: {disagreement.engine_rationale}")
         if disagreement.gold_note:
-            lines.append(f"- Label note: {disagreement.gold_note}")
+            lines.append(f"- Your reasoning: {disagreement.gold_note}")
+        else:
+            lines.append(
+                "- Your reasoning: none written for this criterion, so there is nothing "
+                "to compare the engine's reasoning against."
+            )
         lines.append("")
 
     lines.append("## Scores side by side")

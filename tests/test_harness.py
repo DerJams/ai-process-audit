@@ -34,6 +34,7 @@ def gold_document(rubric_version: str, criteria: dict[str, int | None]) -> dict:
                 "process_name": "Turning job sheets into invoices",
                 "notes": "a note",
                 "criteria": dict(criteria),
+                "rationales": {},
             }
         },
     }
@@ -179,8 +180,34 @@ class TestAgreementMaths(HarnessTestCase):
             run([path], self.rubric, out)
             analysis = (out / "failure_analysis.md").read_text(encoding="utf-8")
             self.assertIn("Label: **1**", analysis)
-            self.assertIn("Engine rationale:", analysis)
-            self.assertIn("Label note: a note", analysis)
+            self.assertIn("Engine reasoning:", analysis)
+            self.assertIn("Your reasoning: a note", analysis)
+
+    def test_per_criterion_rationale_beats_the_process_note(self):
+        labels = {criterion.id: 1 for criterion in self.rubric.criteria}
+        document = gold_document(self.rubric.version, labels)
+        document["processes"]["job-sheet-to-invoice"]["rationales"] = {
+            "pain": "the pain description names a specific cost",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_gold(directory, document)
+            out = Path(directory) / "out"
+            run([path], self.rubric, out)
+            analysis = (out / "failure_analysis.md").read_text(encoding="utf-8")
+            # The criterion with its own reasoning uses it, and the rest fall back to
+            # the process level note.
+            self.assertIn("Your reasoning: the pain description names a specific cost", analysis)
+            self.assertIn("Your reasoning: a note", analysis)
+
+    def test_rationale_for_an_unknown_criterion_is_refused(self):
+        labels = {criterion.id: 1 for criterion in self.rubric.criteria}
+        document = gold_document(self.rubric.version, labels)
+        document["processes"]["job-sheet-to-invoice"]["rationales"] = {"vibes": "hmm"}
+        with tempfile.TemporaryDirectory() as directory:
+            path = self.write_gold(directory, document)
+            with self.assertRaises(GoldError) as caught:
+                compare_one(path, self.rubric)
+            self.assertIn("vibes", str(caught.exception))
 
     def test_empty_gold_set_produces_an_honest_empty_report(self):
         labels = {criterion.id: None for criterion in self.rubric.criteria}
@@ -207,6 +234,13 @@ class TestTemplateGenerator(unittest.TestCase):
             for entry in document["processes"].values():
                 for value in entry["criteria"].values():
                     self.assertIsNone(value)
+                # A rationale slot per criterion, all empty. The generator writes
+                # somewhere to put reasoning, never any reasoning.
+                self.assertEqual(
+                    set(entry["rationales"]), set(entry["criteria"])
+                )
+                for value in entry["rationales"].values():
+                    self.assertEqual(value, "")
             self.assertEqual(document["labelled_by"], "")
 
     def test_template_refuses_to_overwrite_real_labels(self):

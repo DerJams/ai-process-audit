@@ -69,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     intake_reference = intake_reference.replace("\\", "/")
 
     template = {
-        "gold_format": "1",
+        "gold_format": "2",
         "intake_file": intake_reference,
         "rubric_version": rubric.version,
         "labelled_by": "",
@@ -77,14 +77,17 @@ def main(argv: list[str] | None = None) -> int:
         "labelling_notes": (
             "Score each criterion from 1 to 5 using the anchor tables in rubric.md. "
             "Score implementation risk as risk, where 5 is riskiest. Leave a score as "
-            "null if you have not decided yet. Do not change a label to make the "
-            "engine agree."
+            "null if you have not decided yet. Put your reasoning for a score in "
+            "rationales under the same criterion id, which is what the failure "
+            "analysis prints next to the engine's reasoning. Do not change a label to "
+            "make the engine agree."
         ),
         "processes": {
             process.id: {
                 "process_name": process.name,
                 "notes": "",
                 "criteria": {criterion.id: None for criterion in rubric.criteria},
+                "rationales": {criterion.id: "" for criterion in rubric.criteria},
             }
             for process in intake.processes
         },

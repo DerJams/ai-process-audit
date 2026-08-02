@@ -14,7 +14,11 @@ import re
 import unicodedata
 from typing import Any
 
-from .models import Business, Intake, People, Process, Volume
+from .models import Business, Intake, People, Process, TimeSpent, Volume
+
+# A working year, used to turn a weekly time figure into a yearly one. Deliberately
+# below 52 so that holiday and closure weeks are not counted as working ones.
+WORKING_WEEKS_PER_YEAR = 48.0
 
 # How many times a year each stated frequency runs. A working year is treated as
 # 250 days and 52 weeks. Continuous is read as roughly hourly through a working day.
@@ -77,6 +81,40 @@ def _normalize_volume(raw: dict[str, Any], runs_per_year: float) -> Volume:
     )
 
 
+def _normalize_time_spent(raw: dict[str, Any], items_a_year: float) -> TimeSpent:
+    """Turn a stated time figure into hours a year.
+
+    The schema requires at least one of the two, so one branch always applies.
+    """
+    hours_per_week = raw.get("hours_per_week")
+    minutes_per_case = raw.get("minutes_per_case")
+
+    from_cases = None
+    if minutes_per_case is not None:
+        from_cases = float(minutes_per_case) * items_a_year / 60.0
+
+    if hours_per_week is not None:
+        hours_per_year = float(hours_per_week) * WORKING_WEEKS_PER_YEAR
+        basis = (
+            f"{float(hours_per_week):g} hours a week over "
+            f"{WORKING_WEEKS_PER_YEAR:g} working weeks"
+        )
+    else:
+        hours_per_year = from_cases or 0.0
+        basis = (
+            f"{float(minutes_per_case):g} minutes per item over "
+            f"{int(items_a_year):,} items a year"
+        )
+
+    return TimeSpent(
+        hours_per_week=float(hours_per_week) if hours_per_week is not None else None,
+        minutes_per_case=float(minutes_per_case) if minutes_per_case is not None else None,
+        hours_per_year=round(hours_per_year, 2),
+        basis=basis,
+        hours_per_year_from_cases=round(from_cases, 2) if from_cases is not None else None,
+    )
+
+
 def _normalize_people(raw: dict[str, Any], runs_per_year: float) -> People:
     hours_per_run = raw.get("hours_per_run")
     hours_per_year = None
@@ -101,6 +139,8 @@ def _normalize_process(raw: dict[str, Any], index: int, seen_ids: set[str]) -> P
         process_id = f"{process_id}-{index + 1}"
     seen_ids.add(process_id)
 
+    volume = _normalize_volume(raw["volume"], runs_per_year)
+
     return Process(
         id=process_id,
         name=raw["name"].strip(),
@@ -109,12 +149,16 @@ def _normalize_process(raw: dict[str, Any], index: int, seen_ids: set[str]) -> P
         frequency=frequency,
         runs_per_year=runs_per_year,
         frequency_is_assumed=frequency in ASSUMED_FREQUENCIES,
-        volume=_normalize_volume(raw["volume"], runs_per_year),
+        volume=volume,
         people=_normalize_people(raw["people_involved"], runs_per_year),
+        time_spent=_normalize_time_spent(raw["time_spent"], volume.items_per_year),
         current_tools=tuple(tool.strip() for tool in raw.get("current_tools", [])),
         risk_flags=tuple(sorted(raw.get("risk_flags", []))),
         data_notes=(raw.get("data_notes") or "").strip() or None,
         owner=(raw.get("owner") or "").strip() or None,
+        decision_type=raw.get("decision_type"),
+        baseline_metric=(raw.get("baseline_metric") or "").strip() or None,
+        customer_facing=raw.get("customer_facing"),
     )
 
 

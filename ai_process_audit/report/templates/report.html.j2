@@ -138,7 +138,12 @@
     <tr>
       <td class="label">{{ criterion.label }}{% if criterion.inverted %} (inverted){% endif %}</td>
       <td class="val">{{ criterion.raw_score }}/{{ rubric.scale_max }}</td>
-      <td class="why">{{ criterion.rationale }}</td>
+      <td class="why">
+        {{ criterion.rationale }}
+        {% if criterion.was_capped %}
+        <span class="capped">Capped from {{ criterion.cap.score_before }}. {{ criterion.cap.cap.reason }}</span>
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </table>

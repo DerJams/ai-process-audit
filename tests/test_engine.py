@@ -22,7 +22,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ai_process_audit.intake.validator import IntakeValidationError, load_intake, validate_intake
-from ai_process_audit.model.normalize import items_per_year, normalize_intake, slugify
+from ai_process_audit.model.normalize import (
+    WORKING_WEEKS_PER_YEAR,
+    items_per_year,
+    normalize_intake,
+    slugify,
+)
 from ai_process_audit.pipeline import audit_document
 from ai_process_audit.processmap.mermaid import render_mermaid
 from ai_process_audit.processmap.steps import build_process_map
@@ -54,7 +59,7 @@ EM_DASH = chr(0x2014)
 
 def minimal_intake() -> dict:
     return {
-        "schema_version": "1.0.0",
+        "schema_version": "1.1.0",
         "intake_id": "test-business",
         "business": {
             "name": "Test Business",
@@ -77,8 +82,10 @@ def minimal_intake() -> dict:
                     "roles": ["administrator"],
                     "hours_per_run": 2,
                 },
+                "time_spent": {"hours_per_week": 4},
                 "current_tools": ["paper", "Xero"],
                 "pain_description": "It is slow and errors reach the customer.",
+                "baseline_metric": "forms turned round the same day, currently about half",
             }
         ],
     }
@@ -95,6 +102,7 @@ def high_scoring_risky_intake() -> dict:
     process["frequency"] = "daily"
     process["volume"] = {"count": 500, "unit": "forms", "period": "per_day"}
     process["people_involved"]["hours_per_run"] = 8
+    process["time_spent"] = {"hours_per_week": 12}
     process["pain_description"] = (
         "Errors reach customers, staff work overtime and weekends, two people quit, "
         "and the business lost money on refunds and a penalty."
@@ -135,6 +143,37 @@ class TestValidator(unittest.TestCase):
             validate_intake(document)
         self.assertGreaterEqual(len(caught.exception.issues), 2)
 
+    def test_process_without_time_spent_is_rejected(self):
+        document = minimal_intake()
+        del document["processes"][0]["time_spent"]
+        with self.assertRaises(IntakeValidationError) as caught:
+            validate_intake(document)
+        self.assertIn("time_spent", str(caught.exception))
+
+    def test_time_spent_needs_at_least_one_figure(self):
+        document = minimal_intake()
+        document["processes"][0]["time_spent"] = {}
+        with self.assertRaises(IntakeValidationError):
+            validate_intake(document)
+
+    def test_either_time_spent_figure_alone_is_enough(self):
+        for field in ("hours_per_week", "minutes_per_case"):
+            with self.subTest(field=field):
+                document = minimal_intake()
+                document["processes"][0]["time_spent"] = {field: 5}
+                self.assertIsNotNone(validate_intake(document))
+
+    def test_baseline_metric_may_be_null(self):
+        document = minimal_intake()
+        document["processes"][0]["baseline_metric"] = None
+        self.assertIsNotNone(validate_intake(document))
+
+    def test_bad_decision_type_is_rejected(self):
+        document = minimal_intake()
+        document["processes"][0]["decision_type"] = "gut_feel"
+        with self.assertRaises(IntakeValidationError):
+            validate_intake(document)
+
     def test_bad_frequency_is_rejected(self):
         document = minimal_intake()
         document["processes"][0]["frequency"] = "sometimes"
@@ -162,6 +201,47 @@ class TestNormalise(unittest.TestCase):
         document["processes"][0]["frequency"] = "ad_hoc"
         intake = normalize_intake(validate_intake(document))
         self.assertTrue(intake.processes[0].frequency_is_assumed)
+
+    def test_weekly_time_becomes_a_working_year(self):
+        intake = normalize_intake(validate_intake(minimal_intake()))
+        time_spent = intake.processes[0].time_spent
+        self.assertEqual(time_spent.hours_per_year, 4 * WORKING_WEEKS_PER_YEAR)
+        self.assertIsNone(time_spent.hours_per_year_from_cases)
+
+    def test_minutes_per_case_uses_yearly_volume(self):
+        document = minimal_intake()
+        # 10 forms a week is 520 a year, at 30 minutes each, so 260 hours.
+        document["processes"][0]["time_spent"] = {"minutes_per_case": 30}
+        intake = normalize_intake(validate_intake(document))
+        self.assertEqual(intake.processes[0].time_spent.hours_per_year, 260.0)
+
+    def test_both_time_figures_keep_the_weekly_one_as_primary(self):
+        document = minimal_intake()
+        document["processes"][0]["time_spent"] = {
+            "hours_per_week": 4,
+            "minutes_per_case": 30,
+        }
+        time_spent = normalize_intake(validate_intake(document)).processes[0].time_spent
+        self.assertEqual(time_spent.hours_per_year, 4 * WORKING_WEEKS_PER_YEAR)
+        self.assertEqual(time_spent.hours_per_year_from_cases, 260.0)
+        self.assertTrue(time_spent.has_cross_check)
+
+    def test_absent_and_null_baseline_mean_the_same_thing(self):
+        absent = minimal_intake()
+        del absent["processes"][0]["baseline_metric"]
+        explicit_null = minimal_intake()
+        explicit_null["processes"][0]["baseline_metric"] = None
+        for name, document in (("absent", absent), ("null", explicit_null)):
+            with self.subTest(case=name):
+                intake = normalize_intake(validate_intake(document))
+                self.assertFalse(intake.processes[0].has_baseline)
+
+    def test_optional_fields_default_to_none(self):
+        document = minimal_intake()
+        intake = normalize_intake(validate_intake(document))
+        process = intake.processes[0]
+        self.assertIsNone(process.decision_type)
+        self.assertIsNone(process.customer_facing)
 
     def test_hours_per_year_is_derived(self):
         intake = normalize_intake(validate_intake(minimal_intake()))
@@ -267,6 +347,24 @@ class TestRubric(unittest.TestCase):
         self.assertEqual(self.rubric.effective_score("implementation_risk", 1), 5.0)
         self.assertEqual(self.rubric.effective_score("pain", 5), 5.0)
 
+    def test_the_return_band_criterion_cap_is_defined(self):
+        self.assertTrue(self.rubric.criterion_caps)
+        cap = self.rubric.criterion_caps[0]
+        self.assertEqual(cap.criterion, "return_band")
+        self.assertEqual(cap.condition, "no_baseline_metric")
+        self.assertEqual(cap.max_score, 2)
+        self.assertTrue(cap.reason)
+
+    def test_unknown_cap_condition_is_rejected(self):
+        text = (REPO_ROOT / "rubric.md").read_text(encoding="utf-8")
+        broken = text.replace('"condition": "no_baseline_metric"', '"condition": "feels_wrong"')
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rubric.md"
+            path.write_text(broken, encoding="utf-8")
+            with self.assertRaises(RubricError) as caught:
+                load_rubric(path)
+            self.assertIn("feels_wrong", str(caught.exception))
+
     def test_the_risk_cap_is_defined(self):
         self.assertTrue(self.rubric.band_caps)
         cap = self.rubric.band_caps[0]
@@ -363,6 +461,117 @@ class TestJudge(unittest.TestCase):
         verdict = StubJudge("fixed").judge(self.process, self.map, self.rubric)
         self.assertEqual({score.score for score in verdict.scores.values()}, {3})
 
+    def test_return_band_is_scored_from_time_spent(self):
+        cases = [
+            ({"hours_per_week": 12}, 5),
+            ({"hours_per_week": 4}, 4),
+            ({"hours_per_week": 1.5}, 3),
+            ({"hours_per_week": 0.5}, 2),
+            ({"hours_per_week": 0.2}, 1),
+        ]
+        for time_spent, expected in cases:
+            with self.subTest(time_spent=time_spent):
+                document = minimal_intake()
+                document["processes"][0]["time_spent"] = time_spent
+                intake = normalize_intake(validate_intake(document))
+                process = intake.processes[0]
+                verdict = StubJudge().judge(
+                    process, build_process_map(process, intake.business), self.rubric
+                )
+                self.assertEqual(verdict.scores["return_band"].score, expected)
+
+    def test_return_band_rationale_names_the_baseline_or_its_absence(self):
+        with_baseline = normalize_intake(validate_intake(minimal_intake())).processes[0]
+        document = minimal_intake()
+        document["processes"][0]["baseline_metric"] = None
+        without = normalize_intake(validate_intake(document)).processes[0]
+
+        for process, expected in ((with_baseline, "already tracks"), (without, "tracks no number")):
+            with self.subTest(baseline=expected):
+                verdict = StubJudge().judge(
+                    process, build_process_map(process), self.rubric
+                )
+                self.assertIn(expected, verdict.scores["return_band"].rationale)
+
+    def test_risk_rationale_names_decision_type_and_blast_radius(self):
+        document = minimal_intake()
+        document["processes"][0]["decision_type"] = "judgment_heavy"
+        document["processes"][0]["customer_facing"] = True
+        intake = normalize_intake(validate_intake(document))
+        process = intake.processes[0]
+        verdict = StubJudge().judge(
+            process, build_process_map(process, intake.business), self.rubric
+        )
+        rationale = verdict.scores["implementation_risk"].rationale
+        self.assertIn("judgment heavy", rationale)
+        self.assertIn("seen by a customer", rationale)
+
+    def test_judgment_heavy_scores_riskier_than_rule_based(self):
+        scores = {}
+        for decision_type in ("rule_based", "mixed", "judgment_heavy"):
+            document = minimal_intake()
+            document["processes"][0]["decision_type"] = decision_type
+            document["processes"][0]["customer_facing"] = False
+            intake = normalize_intake(validate_intake(document))
+            process = intake.processes[0]
+            verdict = StubJudge().judge(
+                process, build_process_map(process, intake.business), self.rubric
+            )
+            scores[decision_type] = verdict.scores["implementation_risk"].score
+        self.assertLess(scores["rule_based"], scores["judgment_heavy"])
+        self.assertLessEqual(scores["rule_based"], scores["mixed"])
+        self.assertLessEqual(scores["mixed"], scores["judgment_heavy"])
+
+    def test_customer_facing_raises_risk_over_internal_only(self):
+        scores = {}
+        for customer_facing in (False, True):
+            document = minimal_intake()
+            document["processes"][0]["decision_type"] = "mixed"
+            document["processes"][0]["customer_facing"] = customer_facing
+            intake = normalize_intake(validate_intake(document))
+            process = intake.processes[0]
+            verdict = StubJudge().judge(
+                process, build_process_map(process, intake.business), self.rubric
+            )
+            scores[customer_facing] = verdict.scores["implementation_risk"].score
+        self.assertLess(scores[False], scores[True])
+
+    def test_risk_is_scorable_when_both_optional_fields_are_absent(self):
+        document = minimal_intake()
+        document["processes"][0].pop("decision_type", None)
+        document["processes"][0].pop("customer_facing", None)
+        intake = normalize_intake(validate_intake(document))
+        process = intake.processes[0]
+        verdict = StubJudge().judge(
+            process, build_process_map(process, intake.business), self.rubric
+        )
+        score = verdict.scores["implementation_risk"]
+        self.assertGreaterEqual(score.score, self.rubric.scale_min)
+        self.assertLessEqual(score.score, self.rubric.scale_max)
+        # The rubric forbids a 1 when neither field was reported, because a 1 claims
+        # nothing can go wrong and that claim needs evidence.
+        self.assertGreaterEqual(score.score, 2)
+        self.assertIn("not reported", score.rationale)
+        self.assertIn("conservatively", score.rationale)
+
+    def test_absent_decision_type_is_read_as_mixed_not_rule_based(self):
+        absent = minimal_intake()
+        absent["processes"][0].pop("decision_type", None)
+        absent["processes"][0]["customer_facing"] = False
+        stated = minimal_intake()
+        stated["processes"][0]["decision_type"] = "rule_based"
+        stated["processes"][0]["customer_facing"] = False
+
+        results = {}
+        for name, document in (("absent", absent), ("rule_based", stated)):
+            intake = normalize_intake(validate_intake(document))
+            process = intake.processes[0]
+            verdict = StubJudge().judge(
+                process, build_process_map(process, intake.business), self.rubric
+            )
+            results[name] = verdict.scores["implementation_risk"].score
+        self.assertGreater(results["absent"], results["rule_based"])
+
     def test_keywords_match_whole_words_only(self):
         # Reapit contains the letters api. Substring matching read that as evidence
         # of a programmatic interface and scored data availability at the top.
@@ -431,10 +640,20 @@ class TestScoring(unittest.TestCase):
             self.assertGreaterEqual(item.weighted_score, self.rubric.scale_min)
             self.assertLessEqual(item.weighted_score, self.rubric.scale_max)
 
-    def test_fixed_stub_gives_every_process_the_same_score(self):
+    def test_fixed_stub_leaves_only_cap_driven_variation(self):
+        # The fixed stub returns the midpoint for everything, so any difference in
+        # weighted score has to come from the engine rather than the judge. The only
+        # engine rule that changes a score is the return band cap, so processes
+        # should fall into exactly two groups: those with a baseline and those
+        # without.
         result = score_intake(self.intake, judge=StubJudge("fixed"), rubric=self.rubric)
-        scores = {item.weighted_score for item in result.opportunities}
-        self.assertEqual(len(scores), 1)
+        by_baseline: dict[bool, set[float]] = {}
+        for item in result.opportunities:
+            by_baseline.setdefault(item.process.has_baseline, set()).add(item.weighted_score)
+        for has_baseline, scores in by_baseline.items():
+            with self.subTest(has_baseline=has_baseline):
+                self.assertEqual(len(scores), 1)
+        self.assertEqual(len(by_baseline), 2, "this intake should cover both cases")
 
     def test_high_risk_lowers_the_score(self):
         # A process identical but for a risk flag must not score higher.
@@ -461,6 +680,55 @@ class TestScoring(unittest.TestCase):
         # The score is reported as calculated, not lowered to match the band.
         self.assertGreaterEqual(opportunity.weighted_score, 4.0)
 
+    def test_roi_cap_fires_when_no_baseline_is_tracked(self):
+        document = minimal_intake()
+        # Plenty of time spent, so the judge would score the return band at the top.
+        document["processes"][0]["time_spent"] = {"hours_per_week": 20}
+        document["processes"][0]["baseline_metric"] = None
+        result = audit_document(document)
+        return_band = result.opportunities[0].criterion("return_band")
+        self.assertEqual(return_band.judge_score, 5)
+        self.assertEqual(return_band.raw_score, 2)
+        self.assertTrue(return_band.was_capped)
+        self.assertEqual(return_band.cap.score_before, 5)
+        self.assertEqual(return_band.cap.score_after, 2)
+
+    def test_roi_cap_does_not_fire_when_a_baseline_exists(self):
+        document = minimal_intake()
+        document["processes"][0]["time_spent"] = {"hours_per_week": 20}
+        result = audit_document(document)
+        return_band = result.opportunities[0].criterion("return_band")
+        self.assertEqual(return_band.raw_score, 5)
+        self.assertFalse(return_band.was_capped)
+
+    def test_roi_cap_lowers_the_weighted_score(self):
+        with_baseline = minimal_intake()
+        with_baseline["processes"][0]["time_spent"] = {"hours_per_week": 20}
+        without = copy.deepcopy(with_baseline)
+        without["processes"][0]["baseline_metric"] = None
+
+        high = audit_document(with_baseline).opportunities[0]
+        low = audit_document(without).opportunities[0]
+        # Three points of return band at weight 0.15.
+        self.assertAlmostEqual(high.weighted_score - low.weighted_score, 0.45, places=4)
+
+    def test_roi_cap_never_raises_a_low_score(self):
+        document = minimal_intake()
+        document["processes"][0]["time_spent"] = {"hours_per_week": 0.2}
+        document["processes"][0]["baseline_metric"] = None
+        result = audit_document(document)
+        return_band = result.opportunities[0].criterion("return_band")
+        self.assertEqual(return_band.raw_score, 1)
+        self.assertFalse(return_band.was_capped)
+
+    def test_only_the_return_band_is_capped_by_a_missing_baseline(self):
+        document = minimal_intake()
+        document["processes"][0]["baseline_metric"] = None
+        result = audit_document(document)
+        capped = [item.id for item in result.opportunities[0].capped_criteria]
+        self.assertNotIn("pain", capped)
+        self.assertNotIn("implementation_risk", capped)
+
     def test_uncapped_process_records_no_cap(self):
         result = audit_document(minimal_intake())
         opportunity = result.opportunities[0]
@@ -477,9 +745,17 @@ class TestScoring(unittest.TestCase):
             score_process(process, process_map, stale, self.rubric)
 
     def test_ranking_ties_break_predictably(self):
+        from itertools import groupby
+
         result = score_intake(self.intake, judge=StubJudge("fixed"), rubric=self.rubric)
-        ids = [item.process.id for item in result.opportunities]
-        self.assertEqual(ids, sorted(ids))
+        # Within each block of equal scores the order must be by id, so that two runs
+        # over the same intake always produce the same report.
+        for score, group in groupby(
+            result.opportunities, key=lambda item: item.weighted_score
+        ):
+            with self.subTest(score=score):
+                ids = [item.process.id for item in group]
+                self.assertEqual(ids, sorted(ids))
 
     def test_whole_pipeline_is_reproducible(self):
         first = score_intake(self.intake, rubric=self.rubric)

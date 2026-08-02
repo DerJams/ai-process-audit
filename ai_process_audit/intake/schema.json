@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ai-process-audit/schemas/intake-1.0.0.json",
+  "$id": "https://github.com/ai-process-audit/schemas/intake-1.1.0.json",
   "title": "AI Process Audit intake",
-  "description": "A structured description of a business and the processes it runs. This is the only input to the engine.",
+  "description": "A structured description of a business and the processes it runs. This is the only input to the engine. Every field asks for something a business owner can answer from memory, which is why there are no cost fields, no case identifiers, and no org chart.",
   "type": "object",
   "required": ["schema_version", "business", "processes"],
   "additionalProperties": false,
@@ -10,7 +10,7 @@
     "schema_version": {
       "description": "Version of this intake schema the file was written against.",
       "type": "string",
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "intake_id": {
       "description": "Optional stable identifier for this intake, used to match gold labels in the eval harness.",
@@ -75,7 +75,8 @@
         "volume",
         "people_involved",
         "current_tools",
-        "pain_description"
+        "pain_description",
+        "time_spent"
       ],
       "additionalProperties": false,
       "properties": {
@@ -182,6 +183,44 @@
           "type": "string",
           "minLength": 10,
           "maxLength": 3000
+        },
+        "time_spent": {
+          "description": "How much time this process takes. This is the denominator behind the return band criterion, so it is required. Give whichever of the two is easier to answer, or both. An estimate is expected.",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "anyOf": [
+            {"required": ["hours_per_week"]},
+            {"required": ["minutes_per_case"]}
+          ],
+          "properties": {
+            "hours_per_week": {
+              "description": "Total hours a week the process consumes across everyone involved.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "minutes_per_case": {
+              "description": "Minutes spent on one item, end to end, across everyone who touches it. Combined with volume to work out the yearly figure.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000
+            }
+          }
+        },
+        "decision_type": {
+          "description": "Optional. What kind of thinking the process requires. rule_based means the same inputs always give the same answer and the rules could be written down. judgment_heavy means an experienced person weighs things up and two of them might disagree. mixed means both, usually a rule based path with exceptions. Read by the implementation risk criterion. Absent means not reported, which is scored conservatively rather than assumed to be simple.",
+          "type": "string",
+          "enum": ["rule_based", "mixed", "judgment_heavy"]
+        },
+        "baseline_metric": {
+          "description": "Optional. Any number the business already tracks for this process today, in their own words, for example 'invoices out within 3 days, currently about 40 percent'. Null or absent means nothing is tracked, which caps the return band because there would be no way to show the automation helped.",
+          "type": ["string", "null"],
+          "maxLength": 500
+        },
+        "customer_facing": {
+          "description": "Optional. True when a mistake in this process is seen by a customer rather than caught inside the business. Read by the implementation risk criterion as the size of the blast radius.",
+          "type": "boolean"
         },
         "risk_flags": {
           "description": "Optional. Properties of the process that raise implementation risk. Absent means none were reported, not that none exist.",

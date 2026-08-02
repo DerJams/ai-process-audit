@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "intake_id": "northgate-lettings",
   "collected_on": "2026-07-21",
   "business": {
@@ -31,12 +31,35 @@
       },
       "people_involved": {
         "count": 4,
-        "roles": ["property manager", "director", "contractor", "tenant", "landlord"],
+        "roles": [
+          "property manager",
+          "director",
+          "contractor",
+          "tenant",
+          "landlord"
+        ],
         "hours_per_run": 3
       },
-      "current_tools": ["Outlook", "shared mailbox", "Reapit", "phone", "tenant portal", "text message"],
+      "time_spent": {
+        "hours_per_week": 15
+      },
+      "current_tools": [
+        "Outlook",
+        "shared mailbox",
+        "Reapit",
+        "phone",
+        "tenant portal",
+        "text message"
+      ],
       "pain_description": "This is what the property managers say ruins their week. Reports arrive through five channels so things get missed, and two complaints went to the ombudsman last year over repairs that were reported and never actioned, one of which cost them a landlord with six properties. Tenants ring to chase because they never hear anything back. The property managers say they spend more time telling people what is happening than making anything happen. One of them left in March and said this was why.",
-      "risk_flags": ["customer_facing", "legally_binding", "regulated_data"],
+      "decision_type": "mixed",
+      "baseline_metric": "open maintenance jobs showing in Reapit, usually around 60 at any time",
+      "customer_facing": true,
+      "risk_flags": [
+        "customer_facing",
+        "legally_binding",
+        "regulated_data"
+      ],
       "data_notes": "Reports arrive as free text in email, as voice notes, as texts on personal phones, and as portal submissions which are structured. Reapit holds the tenancy and property records properly. The portal is used by maybe a fifth of tenants.",
       "owner": "Priya Nandra"
     },
@@ -53,12 +76,32 @@
       },
       "people_involved": {
         "count": 3,
-        "roles": ["accounts administrator", "property manager", "tenant", "landlord"],
+        "roles": [
+          "accounts administrator",
+          "property manager",
+          "tenant",
+          "landlord"
+        ],
         "hours_per_run": 1.75
       },
-      "current_tools": ["Sage", "Reapit", "Excel", "Outlook"],
+      "time_spent": {
+        "hours_per_week": 9
+      },
+      "current_tools": [
+        "Sage",
+        "Reapit",
+        "Excel",
+        "Outlook"
+      ],
       "pain_description": "The matching is fiddly because tenants pay from accounts in different names, pay part amounts, or pay two months at once. About thirty payments a month need manual investigation. The reminder emails go out late whenever the accounts person is off, and nobody covers it properly. Arrears crept up over the winter and the directors did not spot it until the quarterly landlord reports went out and three landlords complained.",
-      "risk_flags": ["handles_money", "customer_facing", "legally_binding"],
+      "decision_type": "rule_based",
+      "baseline_metric": "arrears as a percentage of rent due, reported to landlords quarterly, currently 4.1 percent",
+      "customer_facing": true,
+      "risk_flags": [
+        "handles_money",
+        "customer_facing",
+        "legally_binding"
+      ],
       "data_notes": "Bank feed in Sage is structured and reliable. Expected rent comes out of Reapit as a CSV export, which the accounts person does by hand each morning. Her chase tracking lives in her own Excel file on her desktop.",
       "owner": "Ellie Vaughan"
     },
@@ -75,12 +118,33 @@
       },
       "people_involved": {
         "count": 2,
-        "roles": ["lettings negotiator", "property manager", "applicant"],
+        "roles": [
+          "lettings negotiator",
+          "property manager",
+          "applicant"
+        ],
         "hours_per_run": 2
       },
-      "current_tools": ["Reapit", "referencing provider portal", "DocuSign", "Outlook", "paper forms"],
+      "time_spent": {
+        "hours_per_week": 10,
+        "minutes_per_case": 120
+      },
+      "current_tools": [
+        "Reapit",
+        "referencing provider portal",
+        "DocuSign",
+        "Outlook",
+        "paper forms"
+      ],
       "pain_description": "Applications arrive incomplete nine times out of ten, so the negotiator spends her time chasing bank details and previous landlord contacts. Applicants get impatient and two walked to another agent in June because the process took eleven days. The identity documents come as phone photos that are often unreadable, and one was accepted last year that turned out to be altered, which the directors are still nervous about.",
-      "risk_flags": ["regulated_data", "legally_binding", "customer_facing"],
+      "decision_type": "judgment_heavy",
+      "baseline_metric": null,
+      "customer_facing": true,
+      "risk_flags": [
+        "regulated_data",
+        "legally_binding",
+        "customer_facing"
+      ],
       "data_notes": "Application data arrives as PDFs, phone photos, and free text emails. The referencing portal has an API according to the provider, but nobody at Northgate has asked about it. Reapit holds the outcome.",
       "owner": "Sam Achebe"
     },
@@ -97,12 +161,31 @@
       },
       "people_involved": {
         "count": 2,
-        "roles": ["accounts administrator", "director"],
+        "roles": [
+          "accounts administrator",
+          "director"
+        ],
         "hours_per_run": 11
       },
-      "current_tools": ["Reapit", "Excel", "Outlook", "Sage", "printer"],
+      "time_spent": {
+        "minutes_per_case": 3.5
+      },
+      "current_tools": [
+        "Reapit",
+        "Excel",
+        "Outlook",
+        "Sage",
+        "printer"
+      ],
       "pain_description": "It takes the best part of two days and the accounts person cannot do anything else while it runs. Roughly fifteen statements a month need a manual correction, usually because a contractor invoice was coded to the wrong property. Landlords query about five a month, which the director then has to unpick. It has never gone badly wrong but it eats the middle of every month.",
-      "risk_flags": ["handles_money", "customer_facing", "regulated_data"],
+      "decision_type": "rule_based",
+      "baseline_metric": "statement queries raised by landlords, about five a month",
+      "customer_facing": true,
+      "risk_flags": [
+        "handles_money",
+        "customer_facing",
+        "regulated_data"
+      ],
       "data_notes": "Reapit holds the transactions in structured form and exports cleanly to Excel. Contractor invoices are coded by hand when they are entered, which is where the errors come from.",
       "owner": "Ellie Vaughan"
     },
@@ -119,12 +202,33 @@
       },
       "people_involved": {
         "count": 2,
-        "roles": ["property manager", "tenant", "landlord"],
+        "roles": [
+          "property manager",
+          "tenant",
+          "landlord"
+        ],
         "hours_per_run": 3.5
       },
-      "current_tools": ["Reapit", "deposit scheme portal", "phone camera", "Outlook", "Excel"],
+      "time_spent": {
+        "hours_per_week": 10
+      },
+      "current_tools": [
+        "Reapit",
+        "deposit scheme portal",
+        "phone camera",
+        "Outlook",
+        "Excel"
+      ],
       "pain_description": "The waiting is the worst part, because a tenant who has moved out stops replying and the clock in the scheme rules keeps running. They lost two disputes last year because the check in inventory photos were too poor to prove anything. Property managers describe writing up a deduction proposal as the job they most put off.",
-      "risk_flags": ["legally_binding", "handles_money", "customer_facing", "regulated_data"],
+      "decision_type": "judgment_heavy",
+      "baseline_metric": null,
+      "customer_facing": true,
+      "risk_flags": [
+        "legally_binding",
+        "handles_money",
+        "customer_facing",
+        "regulated_data"
+      ],
       "data_notes": "Inventories are PDF reports from an inventory clerk. Check out photos are on personal phones and get uploaded inconsistently. The deposit scheme has a portal with no export that anyone knows of.",
       "owner": "Priya Nandra"
     }

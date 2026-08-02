@@ -123,6 +123,18 @@ def _context(result: AuditResult, generated_on: date | None) -> dict:
             f"Rubric {result.rubric.version} is a draft and has not been approved, so "
             "the weights behind these rankings are still open to change."
         )
+    no_baseline = [
+        opportunity.process.name
+        for opportunity in result.opportunities
+        if not opportunity.process.has_baseline
+    ]
+    if no_baseline:
+        warnings.append(
+            "No number is tracked today for "
+            + ", ".join(no_baseline)
+            + ", so the return on those cannot be evidenced and their return band is "
+            "capped. The first piece of work on any of them is to start counting."
+        )
     capped = [
         opportunity.process.name
         for opportunity in result.opportunities

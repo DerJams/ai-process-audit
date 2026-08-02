@@ -114,6 +114,8 @@ def _result_to_dict(result: AuditResult) -> dict:
                 "criteria": {
                     criterion.id: {
                         "raw_score": criterion.raw_score,
+                        "judge_score": criterion.judge_score,
+                        "capped": criterion.was_capped,
                         "effective_score": criterion.effective_score,
                         "weight": criterion.weight,
                         "rationale": criterion.rationale,

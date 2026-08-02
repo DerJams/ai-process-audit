@@ -1,7 +1,7 @@
 {
   "gold_format": "1",
   "intake_file": "../intakes/kilner-food-wholesale.json",
-  "rubric_version": "1.1.0-draft",
+  "rubric_version": "1.2.0-draft",
   "labelled_by": "",
   "labelled_on": "",
   "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Do not change a label to make the engine agree.",

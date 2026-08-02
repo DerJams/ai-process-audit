@@ -23,6 +23,12 @@ _SPEC_BLOCK = re.compile(r"```rubric-spec\s*\n(.*?)\n```", re.DOTALL)
 
 VALID_DIRECTIONS = frozenset({"higher_is_better", "higher_is_worse"})
 
+# The conditions a criterion cap may test. Each one is evaluated against a process in
+# scoring/score.py. Keeping the list closed means a rubric cannot ask for something
+# the engine does not know how to check, and a typo fails at load rather than
+# silently never firing.
+CAP_CONDITIONS = frozenset({"no_baseline_metric"})
+
 # Weights are floats, so an exact sum to 1.0 is not guaranteed by arithmetic.
 WEIGHT_TOLERANCE = 1e-6
 
@@ -72,6 +78,34 @@ class BandCap:
 
 
 @dataclass(frozen=True)
+class CriterionCap:
+    """A rule that limits one criterion score before the weighting is applied.
+
+    Unlike a band cap, this does change the weighted score, because it changes an
+    input to it. It exists for the case where a criterion cannot honestly be scored
+    high on the evidence available, whatever the underlying facts might be.
+
+    The condition is one of a small fixed vocabulary evaluated in scoring, listed in
+    CAP_CONDITIONS. It is deliberately not a general expression language.
+    """
+
+    criterion: str
+    condition: str
+    max_score: int
+    reason: str
+
+
+@dataclass(frozen=True)
+class AppliedCriterionCap:
+    """A record that a criterion cap lowered a score, kept so the report can say so."""
+
+    cap: CriterionCap
+    criterion_label: str
+    score_before: int
+    score_after: int
+
+
+@dataclass(frozen=True)
 class AppliedCap:
     """A record that a cap changed the recommendation, kept so the report can say so."""
 
@@ -94,6 +128,7 @@ class Rubric:
     bands: tuple[Band, ...]
     source_path: Path
     band_caps: tuple[BandCap, ...] = ()
+    criterion_caps: tuple[CriterionCap, ...] = ()
 
     @property
     def criterion_ids(self) -> tuple[str, ...]:
@@ -223,6 +258,27 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
     if not bands:
         raise RubricError(f"Rubric spec in {path} defines no bands")
 
+    criterion_caps: list[CriterionCap] = []
+    for entry in spec.get("criterion_caps", []):
+        if entry["criterion"] not in seen_ids:
+            raise RubricError(
+                f"Criterion cap in {path} refers to criterion {entry['criterion']!r}, "
+                "which is not defined in this rubric"
+            )
+        if entry["condition"] not in CAP_CONDITIONS:
+            raise RubricError(
+                f"Criterion cap in {path} uses condition {entry['condition']!r}, which "
+                f"the engine cannot evaluate. Known conditions: {sorted(CAP_CONDITIONS)}"
+            )
+        criterion_caps.append(
+            CriterionCap(
+                criterion=entry["criterion"],
+                condition=entry["condition"],
+                max_score=int(entry["max_score"]),
+                reason=entry.get("reason", ""),
+            )
+        )
+
     band_ids = {band.id for band in bands}
     caps: list[BandCap] = []
     for entry in spec.get("band_caps", []):
@@ -255,6 +311,7 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
         bands=bands,
         source_path=path,
         band_caps=tuple(caps),
+        criterion_caps=tuple(criterion_caps),
     )
 
 

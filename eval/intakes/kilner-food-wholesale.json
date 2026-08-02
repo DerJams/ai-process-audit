@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "1.1.0",
   "intake_id": "kilner-food-wholesale",
   "collected_on": "2026-07-28",
   "business": {
@@ -31,12 +31,34 @@
       },
       "people_involved": {
         "count": 6,
-        "roles": ["telesales assistant", "sales manager", "warehouse manager", "customer"],
+        "roles": [
+          "telesales assistant",
+          "sales manager",
+          "warehouse manager",
+          "customer"
+        ],
         "hours_per_run": 14
       },
-      "current_tools": ["phone", "WhatsApp Business", "Outlook", "Sage 200", "paper order pads", "ordering website"],
+      "time_spent": {
+        "hours_per_week": 70,
+        "minutes_per_case": 3.5
+      },
+      "current_tools": [
+        "phone",
+        "WhatsApp Business",
+        "Outlook",
+        "Sage 200",
+        "paper order pads",
+        "ordering website"
+      ],
       "pain_description": "The morning is chaos and everyone accepts it as normal. Keying errors put the wrong product or the wrong quantity on maybe fifteen orders a day, which the warehouse either catches or does not. Credits raised for wrong deliveries came to just over sixty thousand pounds last year and the finance director believes most of that starts here. Two telesales staff are off with stress this year. The WhatsApp orders are the worst because there is no record of what was asked for once the message scrolls away, and a customer disputed an order in May that nobody could prove either way.",
-      "risk_flags": ["customer_facing", "handles_money"],
+      "decision_type": "rule_based",
+      "baseline_metric": "credits raised for wrong deliveries, just over sixty thousand pounds last year",
+      "customer_facing": true,
+      "risk_flags": [
+        "customer_facing",
+        "handles_money"
+      ],
       "data_notes": "Sage 200 holds products, prices, and customers in structured form. Phone orders exist only on the paper pad until keyed. WhatsApp orders are free text messages, often with photos of a handwritten list. Website orders come in structured and go straight into Sage.",
       "owner": "Ryan Kilner"
     },
@@ -53,12 +75,29 @@
       },
       "people_involved": {
         "count": 4,
-        "roles": ["buyer", "director", "office administrator"],
+        "roles": [
+          "buyer",
+          "director",
+          "office administrator"
+        ],
         "hours_per_run": 8
       },
-      "current_tools": ["Outlook", "Excel", "Sage 200", "PDF attachments"],
+      "time_spent": {
+        "hours_per_week": 8
+      },
+      "current_tools": [
+        "Outlook",
+        "Excel",
+        "Sage 200",
+        "PDF attachments"
+      ],
       "pain_description": "Price rises get applied late, so they sell at the old margin for a few weeks and the finance director says this is the single biggest leak in the business, though he cannot put a number on it. Around a fifth of notices get missed entirely until an invoice comes in higher than expected. The margin sheet has grown to eleven tabs and only one buyer really understands it. He is sixty three.",
-      "risk_flags": ["handles_money"],
+      "decision_type": "judgment_heavy",
+      "baseline_metric": null,
+      "customer_facing": false,
+      "risk_flags": [
+        "handles_money"
+      ],
       "data_notes": "Notices arrive as PDFs, Excel files, email body text, and photos of paper. No consistent format between suppliers. Sage holds current cost and sell prices in structured fields and can be updated by import, which they have done twice and found fiddly.",
       "owner": "Geoff Aspinall"
     },
@@ -75,12 +114,28 @@
       },
       "people_involved": {
         "count": 2,
-        "roles": ["transport supervisor", "driver"],
+        "roles": [
+          "transport supervisor",
+          "driver"
+        ],
         "hours_per_run": 2
       },
-      "current_tools": ["Sage 200", "Excel", "Paragon route planner", "printer"],
+      "time_spent": {
+        "hours_per_week": 10
+      },
+      "current_tools": [
+        "Sage 200",
+        "Excel",
+        "Paragon route planner",
+        "printer"
+      ],
       "pain_description": "It works, mostly, because the supervisor has done it for nineteen years and knows every customer. That is also the problem. When he was off for a fortnight after an operation the routes fell apart, two vans came back with undelivered chilled stock, and they had to write it off. Nobody else can do it and none of what he knows is written down anywhere.",
-      "risk_flags": ["customer_facing"],
+      "decision_type": "judgment_heavy",
+      "baseline_metric": "drops completed per van per day, off the run sheets, about 60",
+      "customer_facing": true,
+      "risk_flags": [
+        "customer_facing"
+      ],
       "data_notes": "Order and address data is structured in Sage and exports cleanly. The knowledge that actually drives the decisions is in the supervisor's head and is not recorded at all. Paragon holds the routes once built.",
       "owner": "Dave Hollis"
     },
@@ -97,12 +152,31 @@
       },
       "people_involved": {
         "count": 3,
-        "roles": ["credit controller", "director", "telesales assistant"],
+        "roles": [
+          "credit controller",
+          "director",
+          "telesales assistant"
+        ],
         "hours_per_run": 12
       },
-      "current_tools": ["Sage 200", "Outlook", "phone", "WhatsApp Business", "Excel"],
+      "time_spent": {
+        "hours_per_week": 12
+      },
+      "current_tools": [
+        "Sage 200",
+        "Outlook",
+        "phone",
+        "WhatsApp Business",
+        "Excel"
+      ],
       "pain_description": "They wrote off forty one thousand pounds of bad debt last year, and two of those customers had carried on taking deliveries for weeks after going on hold because the message did not reach the warehouse in time. Debtor days have gone from thirty eight to fifty two over three years. The credit controller says she spends half her week leaving voicemails.",
-      "risk_flags": ["handles_money", "customer_facing"],
+      "decision_type": "mixed",
+      "baseline_metric": "debtor days, currently 52, up from 38 three years ago",
+      "customer_facing": true,
+      "risk_flags": [
+        "handles_money",
+        "customer_facing"
+      ],
       "data_notes": "Sage 200 holds the ledger and produces the aged debt report reliably. Everything about what was said to whom lives in the credit controller's own notebook and a spreadsheet she keeps.",
       "owner": "Marion Best"
     },
@@ -119,12 +193,28 @@
       },
       "people_involved": {
         "count": 2,
-        "roles": ["warehouse supervisor"],
+        "roles": [
+          "warehouse supervisor"
+        ],
         "hours_per_run": 0.25
       },
-      "current_tools": ["paper", "clipboard", "lever arch file"],
+      "time_spent": {
+        "minutes_per_case": 1.7
+      },
+      "current_tools": [
+        "paper",
+        "clipboard",
+        "lever arch file"
+      ],
       "pain_description": "It gets done, but not always at the right times, and the readings for a Sunday are sometimes filled in on the Monday from memory. If a chiller drifted overnight nobody would know until the morning. They had a near miss in the hot spell last July when a door seal failed and they lost about four thousand pounds of stock, which a night alarm would have caught. The environmental health officer commented on the handwriting at the last visit.",
-      "risk_flags": ["safety_critical", "regulated_data", "legally_binding"],
+      "decision_type": "rule_based",
+      "baseline_metric": null,
+      "customer_facing": false,
+      "risk_flags": [
+        "safety_critical",
+        "regulated_data",
+        "legally_binding"
+      ],
       "data_notes": "Entirely paper and handwritten. The chiller units have digital displays and two of the newer ones apparently have a data output, but nobody has ever looked into it.",
       "owner": "Dave Hollis"
     }

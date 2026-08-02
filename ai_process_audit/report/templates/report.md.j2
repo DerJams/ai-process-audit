@@ -41,14 +41,22 @@ Each process is scored from {{ rubric.scale_min }} to {{ rubric.scale_max }} on 
 | {{ criterion.label }} | {{ "%.2f" | format(criterion.weight) }} | {{ "higher is better" if not criterion.is_inverted else "higher is worse, inverted by the engine" }} |
 {% endfor %}
 
+{% if rubric.criterion_caps %}
+Two criteria have a ceiling that applies whatever the process itself looks like:
+
+{% for cap in rubric.criterion_caps %}
+- {{ rubric.criterion(cap.criterion).label }} cannot go above {{ cap.max_score }} out of {{ rubric.scale_max }} where the business tracks no number for the process today. {{ cap.reason }}
+{% endfor %}
+{% endif %}
+
 {% if rubric.band_caps %}
-One rule sits outside that arithmetic. A weighted average lets five good criteria outvote one bad one, which is right for a score and wrong for a recommendation:
+One further rule sits outside the arithmetic entirely. A weighted average lets five good criteria outvote one bad one, which is right for a score and wrong for a recommendation:
 
 {% for cap in rubric.band_caps %}
 - Any process scoring {{ cap.at_or_above }} or more on {{ rubric.criterion(cap.criterion).label | lower }} cannot be recommended above {{ rubric.band_by_id(cap.max_band).label }}. {{ cap.reason }}
 {% endfor %}
 
-Where a cap applies, the score is still reported exactly as calculated and the band the score earned is shown next to it, so the number the cap overrode is visible.
+Where that cap applies, the score is still reported exactly as calculated and the band the score earned is shown next to it, so the number the cap overrode is visible.
 {% endif %}
 
 ---
@@ -66,10 +74,17 @@ The score alone would place this in {{ cap.band_before.label }}. It is held at {
 Owner: {{ item.process.owner }}.
 {% endif %}
 Runs {{ item.process.frequency.replace("_", " ") }}, about {{ item.process.runs_per_year | number }} times a year, handling {{ item.process.volume.describe() }}, which works out at roughly {{ item.process.volume.items_per_year | number }} {{ item.process.volume.unit }} a year.
-{% if item.process.people.hours_per_year %}
-About {{ item.process.people.hours_per_year | number }} person hours a year go into it, across {{ item.process.people.count }} people.
+Time spent: {{ item.process.time_spent.describe() }}, which is about {{ item.process.time_spent.hours_per_year | number }} hours a year, across {{ item.process.people.count }} people.
+{% if item.process.decision_type %}
+Decision type: {{ item.process.decision_type.replace("_", " ") }}.
+{% endif %}
+{% if item.process.customer_facing is not none %}
+{{ "A mistake here is seen by a customer." if item.process.customer_facing else "A mistake here is caught inside the business." }}
+{% endif %}
+{% if item.process.has_baseline %}
+Tracked today: {{ item.process.baseline_metric }}
 {% else %}
-The intake did not say how long it takes, so no time figure is available.
+Nothing is tracked for this process today, so there is no baseline to measure an improvement against.
 {% endif %}
 {% if item.process.current_tools %}
 Tools in use: {{ item.process.current_tools | join(", ") }}.
@@ -85,7 +100,11 @@ Risk flags reported: {{ item.process.risk_flags | join(", ") | replace("_", " ")
 | Criterion | Score | Weight | Rationale |
 | --- | --- | --- | --- |
 {% for criterion in item.criteria %}
-| {{ criterion.label }}{{ " (inverted)" if criterion.inverted else "" }} | {{ criterion.raw_score }}/{{ rubric.scale_max }} | {{ "%.2f" | format(criterion.weight) }} | {{ criterion.rationale }} |
+| {{ criterion.label }}{{ " (inverted)" if criterion.inverted else "" }} | {{ criterion.raw_score }}/{{ rubric.scale_max }}{{ " (capped from %d)" | format(criterion.judge_score) if criterion.was_capped else "" }} | {{ "%.2f" | format(criterion.weight) }} | {{ criterion.rationale }} |
+{% endfor %}
+
+{% for criterion in item.capped_criteria %}
+{{ criterion.label }} was scored {{ criterion.cap.score_before }} on the time this process takes, and is held at {{ criterion.cap.score_after }}. {{ criterion.cap.cap.reason }}
 {% endfor %}
 
 Strongest part of the case: {{ item.strongest.label | lower }}. Most likely to stop it: {{ item.weakest.label | lower }}.

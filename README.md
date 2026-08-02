@@ -116,15 +116,80 @@ as risk, and `scoring/rubric.py` inverts it during aggregation. This removes a w
 class of labelling error, since a human labeller and a model judge would both
 otherwise have to remember to flip one criterion out of six.
 
-**One rule sits outside the arithmetic.** A weighted average lets five good criteria
-outvote one bad one. That is correct for a score and wrong for a recommendation when
-the bad one is that a mistake would be a serious event. So a process scoring 5 on
-implementation risk cannot be recommended above Worth a pilot, whatever it scored.
-The score is never changed, the band it earned is printed next to the capped one, and
-the report says why. This is a cap rather than a heavier weight on purpose: raising
-the weight would nudge every process, including the ones where risk is a 2 and the
-change is noise, whereas the cap does nothing at all until risk reaches the top of
-the scale.
+**Two rules sit outside the weighted average.** A weighted average lets five good
+criteria outvote one bad one, which is right for a score and wrong for a
+recommendation. So the rubric has two kinds of cap, both applied by the engine and
+both reported.
+
+A **band cap** limits the recommendation after the weighting, and never changes the
+score. A process scoring 5 on implementation risk cannot be recommended above Worth a
+pilot, whatever it scored. The band it earned is printed next to the capped one, so
+the reader can see what was overridden. This is a cap rather than a heavier weight on
+purpose: raising the weight would nudge every process, including the ones where risk
+is a 2 and the change is noise, whereas the cap does nothing until risk reaches the
+top of the scale.
+
+A **criterion cap** limits one score before the weighting, and therefore does change
+the weighted score. There is one: a process with no `baseline_metric` cannot score
+above 2 on return band. Not because the return is small, but because nobody could
+demonstrate it. A process burning six hundred hours a year with nothing measured is
+not a strong return, it is an unproven one, and the honest recommendation is to start
+counting first. The report states that no baseline exists so the return cannot be
+evidenced, and shows the score the cap overrode.
+
+Both caps are declared as data in the `rubric-spec` block rather than written into
+the scorer, and a criterion cap may only use a condition the engine knows how to
+check, so a typo fails when the rubric loads instead of silently never firing.
+
+## Intake fields
+
+The schema is `intake/schema.json`, currently version 1.1.0. The rule behind it: the
+intake only asks what a business owner can answer from memory, in one sitting,
+without opening a system or asking their accountant. That is why there are no cost
+fields, no case identifiers, no event logs, and no org chart. A field nobody can
+answer accurately is worse than no field, because it produces a number that looks
+like evidence.
+
+Per business:
+
+| Field | Required | What it is |
+| --- | --- | --- |
+| `industry` | yes | What the business does, in its own words |
+| `headcount` | yes | Everyone, including part time and owners |
+| `tools_in_use` | yes | Software the business already pays for or relies on |
+| `name`, `notes` | no | Trading name, and anything that does not fit the fields above |
+
+Per process:
+
+| Field | Required | What it is | Read by |
+| --- | --- | --- | --- |
+| `name` | yes | What staff call it | report |
+| `description` | yes | How it runs today, start to finish, in order | process map |
+| `frequency` | yes | How often it runs, from a fixed list | frequency |
+| `volume` | yes | Count, unit, and period, normalised to items a year | volume |
+| `people_involved` | yes | How many people, their roles, optional hours per run | process map, report |
+| `time_spent` | yes | Hours a week or minutes per item, at least one | return band |
+| `current_tools` | yes | Tools used in this process. Paper and phone are valid entries | data availability, process map |
+| `pain_description` | yes | What goes wrong, what it costs, who feels it | pain |
+| `decision_type` | no | `rule_based`, `mixed`, or `judgment_heavy` | implementation risk |
+| `baseline_metric` | no | Any number the business tracks for this today. Null means none | return band, and its cap |
+| `customer_facing` | no | Whether a mistake is seen by a customer | implementation risk |
+| `risk_flags` | no | Properties that raise risk, from a fixed list | implementation risk |
+| `data_notes` | no | Where the information lives and what shape it is in | data availability |
+| `owner` | no | Who is accountable | report |
+| `id` | no | Stable identifier. Gold labels key on it, so set it if the intake will be labelled | eval harness |
+
+Two of these carry more weight than their size suggests. `time_spent` is required
+because it is the denominator behind the whole return band criterion, and a return
+estimated without it is a guess. `baseline_metric` is optional but consequential:
+leaving it null is a valid and common answer, and it caps the return band at 2,
+because a saving nobody can measure is a saving nobody can show.
+
+An optional field being absent never means the answer is favourable. Absent
+`decision_type` is read as `mixed` rather than `rule_based`, and implementation risk
+is never scored 1 when both `decision_type` and `customer_facing` are missing, since a
+1 claims nothing can go wrong and that claim needs evidence. The rationale says which
+fields were missing and that the score was made conservatively.
 
 ## Why a pipeline and not an agent
 
@@ -231,7 +296,7 @@ To be filled in:
 | Ranking pair agreement | not measured | 0 |
 
 Three intakes are waiting to be labelled, at 30 labels each, so the first run will
-compare 90 labels against rubric 1.1.0-draft.
+compare 90 labels against rubric 1.2.0-draft.
 
 Per criterion agreement, which criterion is weakest, which direction the engine
 leans, and what was changed as a result: all to follow.
@@ -258,8 +323,11 @@ python -m unittest discover -s tests
 Three synthetic intakes are included, covering a plumbing and heating firm, a letting
 agency, and a food wholesaler. They are written to be realistic rather than tidy:
 inconsistent tooling, estimates the business admits are guesses, processes that are
-poor automation candidates, and knowledge that exists only in one person's head. They
-are for labelling and testing, and they describe invented businesses.
+poor automation candidates, and knowledge that exists only in one person's head. Seven
+of the fifteen processes track no baseline metric, and one reports neither
+`decision_type` nor `customer_facing`, so the conservative scoring paths are
+exercised by real fixtures rather than only by unit tests. They are for labelling and
+testing, and they describe invented businesses.
 
 ## Known limits
 
@@ -267,7 +335,7 @@ are for labelling and testing, and they describe invented businesses.
   judgement, and any agreement figure produced against it measures the thresholds.
   Live judging is not implemented, and `scoring/judge.py` contains no network code.
   Turning it on is a reviewed change, not a setting.
-- **The rubric is a draft.** Version 1.1.0-draft is marked unapproved, and the
+- **The rubric is a draft.** Version 1.2.0-draft is marked unapproved, and the
   engine prints that warning on every report. The four open questions from the first
   draft are now resolved in `rubric.md`, with all weights kept as drafted. Weights
   change from here only on evidence from the gold set, not on argument.

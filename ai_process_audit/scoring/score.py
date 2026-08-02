@@ -15,12 +15,25 @@ from dataclasses import dataclass
 from ..model.models import Intake, Process
 from ..processmap.steps import ProcessMap, build_process_map
 from .judge import CriterionScore, Judge, JudgeVerdict, get_judge
-from .rubric import AppliedCap, Band, Rubric, load_rubric
+from .rubric import (
+    AppliedCap,
+    AppliedCriterionCap,
+    Band,
+    CriterionCap,
+    Rubric,
+    load_rubric,
+)
+
+# How each criterion cap condition is checked against a process. The rubric may only
+# name a condition that appears here, which is enforced when the rubric loads.
+CAP_CONDITION_CHECKS = {
+    "no_baseline_metric": lambda process: not process.has_baseline,
+}
 
 
 @dataclass(frozen=True)
 class ScoredCriterion:
-    """One criterion after the rubric direction and weight have been applied."""
+    """One criterion after any cap, the rubric direction, and the weight."""
 
     id: str
     label: str
@@ -29,10 +42,18 @@ class ScoredCriterion:
     weight: float
     inverted: bool
     rationale: str
+    # What the judge said before a criterion cap lowered it. Equal to raw_score when
+    # no cap applied. Kept so a report can show the score the cap overrode.
+    judge_score: int | None = None
+    cap: AppliedCriterionCap | None = None
 
     @property
     def contribution(self) -> float:
         return self.effective_score * self.weight
+
+    @property
+    def was_capped(self) -> bool:
+        return self.cap is not None
 
 
 @dataclass(frozen=True)
@@ -55,6 +76,11 @@ class Opportunity:
     @property
     def was_capped(self) -> bool:
         return bool(self.applied_caps)
+
+    @property
+    def capped_criteria(self) -> tuple[ScoredCriterion, ...]:
+        """Criteria whose score was lowered by a criterion cap."""
+        return tuple(item for item in self.criteria if item.was_capped)
 
     @property
     def strongest(self) -> ScoredCriterion:
@@ -88,6 +114,44 @@ class AuditResult:
         return self.rubric.approved
 
 
+def _applies_to(cap: CriterionCap, process: Process) -> bool:
+    check = CAP_CONDITION_CHECKS.get(cap.condition)
+    if check is None:
+        # Unreachable through load_rubric, which rejects unknown conditions, but a
+        # rubric built in code could still get here. Fail loudly rather than ignore.
+        raise ValueError(f"No check defined for cap condition {cap.condition!r}")
+    return check(process)
+
+
+def _apply_criterion_caps(
+    criterion_id: str,
+    criterion_label: str,
+    judge_score: int,
+    process: Process,
+    rubric: Rubric,
+) -> tuple[int, AppliedCriterionCap | None]:
+    """Lower one criterion score where a cap applies.
+
+    A cap only ever lowers. Where several apply to the same criterion, the lowest
+    ceiling wins.
+    """
+    final = judge_score
+    applied: AppliedCriterionCap | None = None
+    for cap in rubric.criterion_caps:
+        if cap.criterion != criterion_id or not _applies_to(cap, process):
+            continue
+        if final <= cap.max_score:
+            continue  # already at or below the ceiling, so the cap changes nothing
+        applied = AppliedCriterionCap(
+            cap=cap,
+            criterion_label=criterion_label,
+            score_before=final,
+            score_after=cap.max_score,
+        )
+        final = cap.max_score
+    return final, applied
+
+
 def score_process(
     process: Process,
     process_map: ProcessMap,
@@ -104,15 +168,20 @@ def score_process(
     scored: list[ScoredCriterion] = []
     for criterion in rubric.criteria:
         result: CriterionScore = verdict.score_for(criterion.id)
+        final_score, applied = _apply_criterion_caps(
+            criterion.id, criterion.label, result.score, process, rubric
+        )
         scored.append(
             ScoredCriterion(
                 id=criterion.id,
                 label=criterion.label,
-                raw_score=result.score,
-                effective_score=rubric.effective_score(criterion.id, result.score),
+                raw_score=final_score,
+                effective_score=rubric.effective_score(criterion.id, final_score),
                 weight=criterion.weight,
                 inverted=criterion.is_inverted,
                 rationale=result.rationale,
+                judge_score=result.score,
+                cap=applied,
             )
         )
 

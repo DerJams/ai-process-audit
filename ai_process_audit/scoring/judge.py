@@ -123,6 +123,25 @@ _RISK_BY_FLAG: dict[str, int] = {
     "customer_facing": 3,
 }
 
+# How much each decision type moves implementation risk. A judgement heavy process
+# has no rule to check an output against, which is what makes a wrong one hard to
+# find. Absent is read as mixed rather than as rule based, because a business that
+# has not thought about whether a process is rule based has usually not written the
+# rules down.
+_RISK_BY_DECISION_TYPE: dict[str, int] = {
+    "rule_based": -1,
+    "mixed": 0,
+    "judgment_heavy": 1,
+}
+
+# Words that suggest a process reaches people outside the business, used only when
+# customer_facing was not reported.
+_CUSTOMER_WORDS = (
+    "customer", "customers", "client", "clients", "tenant", "tenants", "patient",
+    "patients", "landlord", "landlords", "applicant", "applicants", "guest", "guests",
+    "supplier", "suppliers",
+)
+
 
 class StubJudge:
     """A deterministic placeholder judge.
@@ -273,44 +292,93 @@ class StubJudge:
         )
 
     def _implementation_risk(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
-        if process.risk_flags:
-            score = max(_RISK_BY_FLAG.get(flag, 3) for flag in process.risk_flags)
-            named = ", ".join(flag.replace("_", " ") for flag in process.risk_flags)
-            return score, (
-                f"The intake flags this process as {named}, which raises the cost of a "
-                "wrong output."
+        notes: list[str] = []
+
+        # Decision type. Absent is read as mixed, which the rubric states.
+        decision_type = process.decision_type
+        if decision_type is None:
+            decision_type = "mixed"
+            notes.append("decision type was not reported, so it is read as mixed")
+        decision_shift = _RISK_BY_DECISION_TYPE[decision_type]
+
+        # Blast radius. Absent falls back to whether the text mentions anyone outside
+        # the business, which the rubric also states.
+        if process.customer_facing is None:
+            customer_facing = any(
+                _mentions(process.all_text, word) for word in _CUSTOMER_WORDS
             )
-        approvals = sum(1 for step in process_map.steps if step.kind == "approval")
-        external = any(step.actor_is_external for step in process_map.steps)
-        score = 2 + (1 if external else 0) - (1 if approvals >= 2 else 0)
-        return max(1, score), (
-            f"No risk flags were reported, the map shows {approvals} checking step(s), and the "
-            f"process does{'' if external else ' not'} reach people outside the business."
+            notes.append(
+                "whether it is customer facing was not reported, so it is read from the "
+                f"description as {'customer facing' if customer_facing else 'internal only'}"
+            )
+        else:
+            customer_facing = process.customer_facing
+
+        if process.risk_flags:
+            base = max(_RISK_BY_FLAG.get(flag, 3) for flag in process.risk_flags)
+            named = ", ".join(flag.replace("_", " ") for flag in process.risk_flags)
+            reason = f"The intake flags this process as {named}"
+        else:
+            approvals = sum(1 for step in process_map.steps if step.kind == "approval")
+            base = 2 - (1 if approvals >= 2 else 0)
+            reason = (
+                f"No risk flags were reported and the map shows {approvals} checking step(s)"
+            )
+
+        score = base + decision_shift + (1 if customer_facing else 0)
+
+        # A 1 is a claim that nothing can go wrong. The rubric forbids that claim when
+        # both optional fields are missing, because it would be a guess dressed as a
+        # finding.
+        floor = 2 if (process.decision_type is None and process.customer_facing is None) else 1
+        score = max(floor, score)
+        if score == floor and floor == 2:
+            notes.append("it is not scored below 2 because neither field was reported")
+
+        detail = f"{reason}, the work is {decision_type.replace('_', ' ')}, and an error "
+        detail += (
+            "would be seen by a customer rather than caught inside the business"
+            if customer_facing
+            else "would be caught inside the business as rework"
         )
+        tail = f" Scored conservatively because {'; '.join(notes)}." if notes else ""
+        return score, f"{detail}.{tail}"
 
     def _return_band(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
-        hours = process.people.hours_per_year
-        if hours is None:
-            return 3, (
-                "The intake does not say how long this process takes, so the return cannot "
-                "be estimated and scores at the midpoint."
-            )
-        if hours >= 250:
+        # Scored from time spent alone. The baseline metric cap is applied by the
+        # engine afterwards, so that it holds whatever a judge returns here.
+        hours = process.time_spent.hours_per_year
+        if hours > 500:
             score = 5
-        elif hours >= 100:
+        elif hours >= 150:
             score = 4
-        elif hours >= 24:
+        elif hours >= 50:
             score = 3
-        elif hours >= 6:
+        elif hours >= 12:
             score = 2
         else:
             score = 1
-        per_run = process.people.hours_per_run or 0
-        per_run_text = f"{per_run:g}"
-        return score, (
-            f"About {int(hours):,} person hours a year go into this process, from "
-            f"{per_run_text} hours per run across {process.people.count} people."
+
+        rationale = (
+            f"About {int(hours):,} hours a year go into this process, from "
+            f"{process.time_spent.basis}."
         )
+        if process.time_spent.has_cross_check:
+            derived = process.time_spent.hours_per_year_from_cases or 0
+            rationale += (
+                f" Minutes per item across the year would suggest {int(derived):,} hours, "
+                "so the two figures given do not fully agree."
+            )
+        if not process.has_baseline:
+            rationale += (
+                " The business tracks no number for this process today, so any saving "
+                "could be claimed but not shown."
+            )
+        else:
+            rationale += f" The business already tracks: {process.baseline_metric}"
+            if not rationale.endswith("."):
+                rationale += "."
+        return score, rationale
 
 
 class LiveJudge:

@@ -36,6 +36,38 @@ class Volume:
 
 
 @dataclass(frozen=True)
+class TimeSpent:
+    """How much time a process consumes, normalised to hours a year.
+
+    This is the denominator behind the return band criterion. A business may answer
+    in weekly hours, in minutes per item, or both. When both are given the stated
+    weekly figure is treated as the primary one, because it is what the business
+    actually observes, and the figure derived from minutes per item is kept beside it
+    as a cross check rather than averaged into it.
+    """
+
+    hours_per_week: float | None
+    minutes_per_case: float | None
+    hours_per_year: float
+    basis: str
+    hours_per_year_from_cases: float | None = None
+
+    @property
+    def has_cross_check(self) -> bool:
+        return (
+            self.hours_per_week is not None
+            and self.hours_per_year_from_cases is not None
+        )
+
+    def describe(self) -> str:
+        if self.hours_per_week is not None:
+            weekly = f"{self.hours_per_week:g}"
+            return f"{weekly} hours a week"
+        minutes = f"{self.minutes_per_case:g}"
+        return f"{minutes} minutes per item"
+
+
+@dataclass(frozen=True)
 class People:
     """Who runs a process and how much of their time it takes."""
 
@@ -58,15 +90,33 @@ class Process:
     frequency_is_assumed: bool
     volume: Volume
     people: People
+    time_spent: TimeSpent
     current_tools: tuple[str, ...] = ()
     risk_flags: tuple[str, ...] = ()
     data_notes: str | None = None
     owner: str | None = None
+    decision_type: str | None = None
+    baseline_metric: str | None = None
+    customer_facing: bool | None = None
+
+    @property
+    def has_baseline(self) -> bool:
+        """Whether the business tracks any number for this process today.
+
+        Absent and null mean the same thing here: nothing is tracked, so there would
+        be no way to show an automation helped.
+        """
+        return bool(self.baseline_metric and self.baseline_metric.strip())
 
     @property
     def all_text(self) -> str:
         """Every free text field joined, for keyword scanning."""
-        parts = [self.description, self.pain_description, self.data_notes or ""]
+        parts = [
+            self.description,
+            self.pain_description,
+            self.data_notes or "",
+            self.baseline_metric or "",
+        ]
         return " ".join(part for part in parts if part)
 
 
@@ -93,4 +143,4 @@ class Intake:
     business: Business
     processes: tuple[Process, ...] = field(default_factory=tuple)
     collected_on: str | None = None
-    schema_version: str = "1.0.0"
+    schema_version: str = "1.1.0"

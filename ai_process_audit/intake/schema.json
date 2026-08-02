@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/ai-process-audit/schemas/intake-1.0.0.json",
+  "title": "AI Process Audit intake",
+  "description": "A structured description of a business and the processes it runs. This is the only input to the engine.",
+  "type": "object",
+  "required": ["schema_version", "business", "processes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "description": "Version of this intake schema the file was written against.",
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "intake_id": {
+      "description": "Optional stable identifier for this intake, used to match gold labels in the eval harness.",
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+    },
+    "collected_on": {
+      "description": "Date the intake was collected, as YYYY-MM-DD.",
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "business": {
+      "type": "object",
+      "required": ["industry", "headcount", "tools_in_use"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Trading name of the business. Optional so intakes can be anonymised.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "industry": {
+          "description": "What the business does, in the words the business would use.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200
+        },
+        "headcount": {
+          "description": "Total number of people, including part time and owners.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100000
+        },
+        "tools_in_use": {
+          "description": "Software the business already pays for or relies on, across the whole business.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 100},
+          "maxItems": 100
+        },
+        "notes": {
+          "description": "Anything about the business that does not fit the fields above.",
+          "type": "string",
+          "maxLength": 2000
+        }
+      }
+    },
+    "processes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {"$ref": "#/$defs/process"}
+    }
+  },
+  "$defs": {
+    "process": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "frequency",
+        "volume",
+        "people_involved",
+        "current_tools",
+        "pain_description"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "Stable identifier for this process. Required in practice for gold labelling. Generated from the name if absent.",
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{1,63}$"
+        },
+        "name": {
+          "description": "Short name for the process as staff would refer to it.",
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "description": {
+          "description": "How the process runs today, start to finish, in order. Step inference reads this field, so ordering words such as then, next, and once are useful.",
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 5000
+        },
+        "frequency": {
+          "description": "How often the process runs.",
+          "type": "string",
+          "enum": [
+            "continuous",
+            "daily",
+            "several_times_per_week",
+            "weekly",
+            "monthly",
+            "quarterly",
+            "annually",
+            "ad_hoc"
+          ]
+        },
+        "volume": {
+          "description": "How many items the process handles, and over what period.",
+          "type": "object",
+          "required": ["count", "unit", "period"],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "description": "Number of items. An estimate is fine and is expected.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000000
+            },
+            "unit": {
+              "description": "What is being counted, for example invoices, bookings, applications.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "period": {
+              "description": "The period the count covers. Use per_run when the count is items handled each time the process runs.",
+              "type": "string",
+              "enum": [
+                "per_run",
+                "per_day",
+                "per_week",
+                "per_month",
+                "per_quarter",
+                "per_year"
+              ]
+            },
+            "is_estimate": {
+              "description": "True when the business guessed the number rather than reading it from a system.",
+              "type": "boolean"
+            }
+          }
+        },
+        "people_involved": {
+          "description": "Who touches the process.",
+          "type": "object",
+          "required": ["count"],
+          "additionalProperties": false,
+          "properties": {
+            "count": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 10000
+            },
+            "roles": {
+              "description": "Job titles of the people involved. Used to attribute steps in the process map.",
+              "type": "array",
+              "items": {"type": "string", "minLength": 1, "maxLength": 80},
+              "maxItems": 30
+            },
+            "hours_per_run": {
+              "description": "Total person hours consumed each time the process runs, across everyone involved.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10000
+            }
+          }
+        },
+        "current_tools": {
+          "description": "Software and non software tools used in this specific process. Paper, phone, and whiteboard are valid entries.",
+          "type": "array",
+          "items": {"type": "string", "minLength": 1, "maxLength": 100},
+          "maxItems": 50
+        },
+        "pain_description": {
+          "description": "What goes wrong, what it costs, and who feels it. Scored directly by the pain criterion.",
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 3000
+        },
+        "risk_flags": {
+          "description": "Optional. Properties of the process that raise implementation risk. Absent means none were reported, not that none exist.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "customer_facing",
+              "handles_money",
+              "regulated_data",
+              "safety_critical",
+              "legally_binding"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 5
+        },
+        "data_notes": {
+          "description": "Optional. Where the information lives and what shape it is in. Read by the data availability criterion.",
+          "type": "string",
+          "maxLength": 2000
+        },
+        "owner": {
+          "description": "Optional. The person accountable for the process.",
+          "type": "string",
+          "maxLength": 120
+        }
+      }
+    }
+  }
+}

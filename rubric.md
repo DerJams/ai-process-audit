@@ -1,0 +1,210 @@
+# Automation Opportunity Rubric
+
+**Version: 1.0.0-draft**
+**Status: DRAFT. Not approved. Weights and criteria are proposals awaiting review.**
+
+This file is the single source of truth for scoring. The engine reads the machine
+readable block at the bottom of this file. If you change a definition here, change
+the matching entry in that block, and raise the version number.
+
+## How scoring works
+
+Every process in an intake is scored against six criteria. Each criterion gets an
+integer score from 1 to 5 and a one sentence rationale. Scores are combined into a
+single number from 1.0 to 5.0 using the weights below, and that number maps to a
+recommendation band.
+
+Five of the six criteria point the same way: a higher score means a better
+automation candidate. One criterion, implementation risk, points the other way. A
+score of 5 on implementation risk means the work is risky, so the engine inverts it
+before combining. The inversion is applied in code, not by the person or model doing
+the scoring. When you score implementation risk, score the risk itself.
+
+## Scoring discipline
+
+Two rules keep the scores comparable across businesses:
+
+1. Score what the intake actually says. If the intake does not contain the
+   information a criterion asks about, score it 3 and say so in the rationale.
+   Do not assume a well run business, and do not assume a badly run one.
+2. Score the process as it is described today, not the process as it might be after
+   a cleanup project.
+
+## Criteria
+
+### 1. Pain (weight 0.20)
+
+How much trouble the process causes the people who run it today. Look at the pain
+description, not just the process description.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Nobody complains about it. It runs quietly and errors are rare. |
+| 2 | Mild irritation. Occasional rework, no real consequence when it goes wrong. |
+| 3 | A recognised annoyance. Staff mention it, and mistakes cost some rework. |
+| 4 | A regular source of stress or errors that reach customers or the books. |
+| 5 | A named problem that the business is actively losing money, staff, or customers over. |
+
+### 2. Frequency (weight 0.15)
+
+How often the process runs. Taken from the frequency field and normalised to runs
+per year. Frequency is scored separately from volume because a process that runs
+once a month over a thousand records has a different automation shape than one that
+runs fifty times a day over one record.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Runs once a year or less. |
+| 2 | Runs a few times a year, roughly quarterly. |
+| 3 | Runs monthly, or on an irregular schedule averaging about monthly. |
+| 4 | Runs weekly or several times a week. |
+| 5 | Runs daily or continuously through the working day. |
+
+### 3. Volume (weight 0.15)
+
+How many items pass through the process in a year. An item is whatever the process
+handles: an invoice, a booking, an application, a support message.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Under 50 items a year. |
+| 2 | 50 to 250 items a year. |
+| 3 | 250 to 1,000 items a year. |
+| 4 | 1,000 to 10,000 items a year. |
+| 5 | Over 10,000 items a year. |
+
+### 4. Data availability (weight 0.20)
+
+Whether the information the process needs already exists somewhere a computer can
+read it. This is the criterion that most often kills an otherwise good candidate.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | The information lives in people's heads, on paper, or in conversation. Nothing is recorded in a system. |
+| 2 | Recorded, but in free text or scanned images with no consistent structure, and often incomplete. |
+| 3 | Recorded in spreadsheets or email in a mostly consistent shape, readable with effort and cleanup. |
+| 4 | Held in a real system with structured fields, though export or access needs manual steps. |
+| 5 | Held in a system with structured fields and a documented way to read it programmatically. |
+
+### 5. Implementation risk (weight 0.15, inverted)
+
+What could go wrong if the automation is wrong, and how hard it is to catch. Higher
+means riskier. Score the risk, not the desirability. The engine inverts this.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Internal only, easily reversed, and a mistake is obvious immediately. |
+| 2 | Internal, reversible, and a mistake would be caught within a day by normal checks. |
+| 3 | Touches customers or records indirectly, and a mistake would take a few days to surface. |
+| 4 | Sends things to customers, moves money, or writes to the books, and errors are hard to spot. |
+| 5 | Legally binding, safety related, or regulated, where a single wrong output is a serious event. |
+
+### 6. Return band (weight 0.15)
+
+The size of the return relative to the effort, judged from time spent and the cost
+of the errors the process currently produces. This is a band, not a forecast. It is
+deliberately coarse because a precise number here would be false precision.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Saves under an hour a month. The build would take longer to pay back than it is worth. |
+| 2 | Saves a few hours a month, or removes a minor recurring error. |
+| 3 | Saves roughly a day a month, or removes an error that costs real money a few times a year. |
+| 4 | Saves several days a month, or frees a person from work they were hired to stop doing. |
+| 5 | Saves a role's worth of time, or removes an error class that is currently costing the business regularly. |
+
+## Recommendation bands
+
+The weighted score maps to one of four bands. The band is what goes at the top of
+the report, and the number is shown next to it so the reader can see how close a
+call it was.
+
+| Band | Weighted score | Meaning |
+| --- | --- | --- |
+| Strong candidate | 4.00 and above | Worth scoping properly now. |
+| Worth a pilot | 3.00 to 3.99 | Worth a small time boxed test before committing. |
+| Watch list | 2.00 to 2.99 | Not now. Revisit if volume grows or the data improves. |
+| Not a fit | Below 2.00 | Automation is not the answer to this one. |
+
+## Open questions for review
+
+These are the decisions this draft makes that most deserve a second opinion:
+
+1. **Pain and data availability both carry 0.20.** Data availability is the criterion
+   that most often decides whether a build succeeds. An argument exists for giving it
+   0.25 and taking 0.05 from frequency.
+2. **Implementation risk at 0.15 may be too light.** A process scoring 5 on risk can
+   still land in Worth a pilot if everything else is high. A hard rule that caps the
+   band when risk is 5 may be safer than a weight.
+3. **Frequency and volume are correlated** in most real intakes, so together at 0.30
+   they may be double counting the same signal.
+4. **Return band is partly a function of the other five.** Asking the judge to score
+   it independently invites inconsistency. It could be computed instead of judged.
+
+## Change log
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1.0.0-draft | 2026-08-02 | First draft. Not approved for use. |
+
+## Machine readable specification
+
+The engine parses the block below. Nothing else in this file is read by code.
+
+```rubric-spec
+{
+  "version": "1.0.0-draft",
+  "approved": false,
+  "scale": {"min": 1, "max": 5},
+  "criteria": [
+    {
+      "id": "pain",
+      "label": "Pain",
+      "weight": 0.20,
+      "direction": "higher_is_better",
+      "question": "How much trouble does this process cause the people who run it today?"
+    },
+    {
+      "id": "frequency",
+      "label": "Frequency",
+      "weight": 0.15,
+      "direction": "higher_is_better",
+      "question": "How often does this process run?"
+    },
+    {
+      "id": "volume",
+      "label": "Volume",
+      "weight": 0.15,
+      "direction": "higher_is_better",
+      "question": "How many items pass through this process in a year?"
+    },
+    {
+      "id": "data_availability",
+      "label": "Data availability",
+      "weight": 0.20,
+      "direction": "higher_is_better",
+      "question": "Does the information this process needs already exist somewhere a computer can read?"
+    },
+    {
+      "id": "implementation_risk",
+      "label": "Implementation risk",
+      "weight": 0.15,
+      "direction": "higher_is_worse",
+      "question": "What could go wrong if the automation is wrong, and how hard would it be to catch?"
+    },
+    {
+      "id": "return_band",
+      "label": "Return band",
+      "weight": 0.15,
+      "direction": "higher_is_better",
+      "question": "How large is the likely return relative to the effort of building it?"
+    }
+  ],
+  "bands": [
+    {"id": "strong", "label": "Strong candidate", "min_score": 4.00},
+    {"id": "pilot", "label": "Worth a pilot", "min_score": 3.00},
+    {"id": "watch", "label": "Watch list", "min_score": 2.00},
+    {"id": "not_a_fit", "label": "Not a fit", "min_score": 0.00}
+  ]
+}
+```

@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Generated reports and eval output. Both are reproducible from the inputs.
+out/
+eval/out/
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

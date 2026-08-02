@@ -1,0 +1,70 @@
+{
+  "gold_format": "1",
+  "intake_file": "../intakes/northgate-lettings.json",
+  "rubric_version": "1.0.0-draft",
+  "labelled_by": "",
+  "labelled_on": "",
+  "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Do not change a label to make the engine agree.",
+  "processes": {
+    "maintenance-triage": {
+      "process_name": "Triaging tenant maintenance reports",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "rent-arrears-chasing": {
+      "process_name": "Chasing rent arrears",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "tenant-referencing": {
+      "process_name": "Processing tenant applications and referencing",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "landlord-statements": {
+      "process_name": "Producing monthly landlord statements",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "deposit-return": {
+      "process_name": "Returning tenancy deposits",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    }
+  }
+}

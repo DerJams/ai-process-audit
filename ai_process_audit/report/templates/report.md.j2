@@ -1,0 +1,103 @@
+# Automation review: {{ business.display_name }}
+
+{{ business.industry }} | {{ business.headcount }} people | {{ opportunities | length }} process{{ "es" if opportunities | length != 1 else "" }} reviewed
+{% if intake.collected_on %}
+Intake collected {{ intake.collected_on }}.
+{% endif %}
+Generated {{ generated_on }} against rubric {{ rubric.version }} by judge `{{ result.judge_id }}` in {{ result.judge_mode }} mode.
+
+> {{ disclosure }}
+
+{% if warnings %}
+## Read this before the rankings
+
+{% for warning in warnings %}
+- {{ warning }}
+{% endfor %}
+{% endif %}
+
+## Ranked opportunities
+
+| no. | Process | Recommendation | Score | Main limit |
+| --- | --- | --- | --- | --- |
+{% for item in opportunities %}
+| {{ item.rank }} | {{ item.process.name }} | {{ item.band.label }} | {{ item.weighted_score | score }} | {{ item.weakest.label }} ({{ item.weakest.raw_score }}/{{ rubric.scale_max }}) |
+{% endfor %}
+
+Scores run from {{ "%.2f" | format(rubric.scale_min | float) }} to {{ "%.2f" | format(rubric.scale_max | float) }}. Bands are set in rubric {{ rubric.version }}:
+{% for band in rubric.bands %}
+{{ band.label }} at {{ band.min_score | score }} and above{{ "." if loop.last else ";" }}
+{% endfor %}
+
+## How the scoring works
+
+Each process is scored from {{ rubric.scale_min }} to {{ rubric.scale_max }} on {{ rubric.criteria | length }} criteria. Five point the same way, where a higher score means a better candidate. Implementation risk points the other way, so it is inverted before the weighted score is worked out. The inversion is done by the engine, not by the judge.
+
+| Criterion | Weight | Direction |
+| --- | --- | --- |
+{% for criterion in rubric.criteria %}
+| {{ criterion.label }} | {{ "%.2f" | format(criterion.weight) }} | {{ "higher is better" if not criterion.is_inverted else "higher is worse, inverted by the engine" }} |
+{% endfor %}
+
+---
+
+{% for item in opportunities %}
+## {{ item.rank }}. {{ item.process.name }}
+
+**{{ item.band.label }}, weighted score {{ item.weighted_score | score }}.**
+
+{% if item.process.owner %}
+Owner: {{ item.process.owner }}.
+{% endif %}
+Runs {{ item.process.frequency.replace("_", " ") }}, about {{ item.process.runs_per_year | number }} times a year, handling {{ item.process.volume.describe() }}, which works out at roughly {{ item.process.volume.items_per_year | number }} {{ item.process.volume.unit }} a year.
+{% if item.process.people.hours_per_year %}
+About {{ item.process.people.hours_per_year | number }} person hours a year go into it, across {{ item.process.people.count }} people.
+{% else %}
+The intake did not say how long it takes, so no time figure is available.
+{% endif %}
+{% if item.process.current_tools %}
+Tools in use: {{ item.process.current_tools | join(", ") }}.
+{% endif %}
+{% if item.process.risk_flags %}
+Risk flags reported: {{ item.process.risk_flags | join(", ") | replace("_", " ") }}.
+{% endif %}
+
+**What the business said hurts:** {{ item.process.pain_description }}
+
+### Scores
+
+| Criterion | Score | Weight | Rationale |
+| --- | --- | --- | --- |
+{% for criterion in item.criteria %}
+| {{ criterion.label }}{{ " (inverted)" if criterion.inverted else "" }} | {{ criterion.raw_score }}/{{ rubric.scale_max }} | {{ "%.2f" | format(criterion.weight) }} | {{ criterion.rationale }} |
+{% endfor %}
+
+Strongest part of the case: {{ item.strongest.label | lower }}. Most likely to stop it: {{ item.weakest.label | lower }}.
+
+### Process map
+
+The engine inferred {{ item.process_map.step_count }} steps from the description, of which {{ item.process_map.manual_step_count }} are done by hand. It found {{ item.process_map.handoff_count }} handoff{{ "s" if item.process_map.handoff_count != 1 else "" }} between people and {{ item.process_map.wait_count }} waiting step{{ "s" if item.process_map.wait_count != 1 else "" }}.
+{% if item.process_map.truncated %}
+The description was long enough that step inference stopped early, so this map is incomplete.
+{% endif %}
+This map was read out of the description by a rule based parser. Check it before relying on it.
+
+```mermaid
+{{ render_mermaid(item.process_map) }}
+```
+
+{% if not loop.last %}
+---
+{% endif %}
+{% endfor %}
+
+## Method and limits
+
+This report came from a fixed pipeline. The intake was validated against a JSON Schema, normalised into an internal model, read into a process map by a rule based parser, scored one criterion at a time against rubric {{ rubric.version }}, and ranked by weighted score. Every stage except the scoring is deterministic, and the same intake produces the same report every time.
+
+The limits worth stating:
+
+- Nothing here was verified. Volumes, times, and pain came from the intake as given.
+- The process maps are a shallow reading of a text description. They will miss branches and loops.
+- The weights in the rubric are a judgement about what matters, and reasonable people would set them differently. They are recorded in rubric {{ rubric.version }} so they can be argued with.
+- A ranking is not a plan. The next step for anything in this report is a person checking whether the engine understood the process correctly.

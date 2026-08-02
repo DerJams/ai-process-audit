@@ -1,0 +1,70 @@
+{
+  "gold_format": "1",
+  "intake_file": "../intakes/kilner-food-wholesale.json",
+  "rubric_version": "1.0.0-draft",
+  "labelled_by": "",
+  "labelled_on": "",
+  "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Do not change a label to make the engine agree.",
+  "processes": {
+    "order-taking": {
+      "process_name": "Taking customer orders",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "supplier-price-updates": {
+      "process_name": "Updating supplier price changes",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "delivery-route-planning": {
+      "process_name": "Planning the delivery routes",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "credit-control": {
+      "process_name": "Credit control and account holds",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "temperature-log-checks": {
+      "process_name": "Recording chiller temperature checks",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    }
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": "1.0.0",
+  "intake_id": "kilner-food-wholesale",
+  "collected_on": "2026-07-28",
+  "business": {
+    "name": "Kilner and Sons",
+    "industry": "Independent chilled and ambient food wholesale to cafes, delis, and small restaurants",
+    "headcount": 31,
+    "tools_in_use": [
+      "Sage 200",
+      "Excel",
+      "WhatsApp Business",
+      "Outlook",
+      "Paragon route planner",
+      "handheld scanners (three working)",
+      "answerphone"
+    ],
+    "notes": "Third generation family business. Four drivers, eleven warehouse, five telesales, three buyers, an accounts team of three, two directors, and three others nobody could categorise. Sage 200 has been in since 2011 and holds stock and sales ledger. The buying team works almost entirely in Excel. The warehouse manager keeps the real stock figures on a clipboard because he does not trust Sage, and he is usually right."
+  },
+  "processes": [
+    {
+      "id": "order-taking",
+      "name": "Taking customer orders",
+      "description": "Orders come in by phone to telesales between six and ten in the morning, by WhatsApp to the sales manager at any hour including Sunday night, by email, and a handful through the ordering website that about thirty customers use. Telesales write phone orders on a duplicate pad, then key them into Sage. WhatsApp orders get read out loud across the office or forwarded to whoever is free, then keyed in the same way. The cut off for next day delivery is ten in the morning but the sales manager takes them until eleven for the customers he likes. Once orders are keyed, the warehouse prints picking notes at half past eleven.",
+      "frequency": "daily",
+      "volume": {
+        "count": 240,
+        "unit": "orders",
+        "period": "per_day",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 6,
+        "roles": ["telesales assistant", "sales manager", "warehouse manager", "customer"],
+        "hours_per_run": 14
+      },
+      "current_tools": ["phone", "WhatsApp Business", "Outlook", "Sage 200", "paper order pads", "ordering website"],
+      "pain_description": "The morning is chaos and everyone accepts it as normal. Keying errors put the wrong product or the wrong quantity on maybe fifteen orders a day, which the warehouse either catches or does not. Credits raised for wrong deliveries came to just over sixty thousand pounds last year and the finance director believes most of that starts here. Two telesales staff are off with stress this year. The WhatsApp orders are the worst because there is no record of what was asked for once the message scrolls away, and a customer disputed an order in May that nobody could prove either way.",
+      "risk_flags": ["customer_facing", "handles_money"],
+      "data_notes": "Sage 200 holds products, prices, and customers in structured form. Phone orders exist only on the paper pad until keyed. WhatsApp orders are free text messages, often with photos of a handwritten list. Website orders come in structured and go straight into Sage.",
+      "owner": "Ryan Kilner"
+    },
+    {
+      "id": "supplier-price-updates",
+      "name": "Updating supplier price changes",
+      "description": "Suppliers send price change notices by email, as PDFs, as Excel attachments, and occasionally as a photograph of a letter. The buyer opens each one, compares it against the current cost in Sage, works out whether the sell price needs to move using a margin sheet in Excel, then either updates Sage directly or asks the office to do it. Big changes get discussed with a director first. Prices from about eighty suppliers change at different times, and around fifteen notices arrive in a normal week.",
+      "frequency": "weekly",
+      "volume": {
+        "count": 15,
+        "unit": "price change notices",
+        "period": "per_week",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 4,
+        "roles": ["buyer", "director", "office administrator"],
+        "hours_per_run": 8
+      },
+      "current_tools": ["Outlook", "Excel", "Sage 200", "PDF attachments"],
+      "pain_description": "Price rises get applied late, so they sell at the old margin for a few weeks and the finance director says this is the single biggest leak in the business, though he cannot put a number on it. Around a fifth of notices get missed entirely until an invoice comes in higher than expected. The margin sheet has grown to eleven tabs and only one buyer really understands it. He is sixty three.",
+      "risk_flags": ["handles_money"],
+      "data_notes": "Notices arrive as PDFs, Excel files, email body text, and photos of paper. No consistent format between suppliers. Sage holds current cost and sell prices in structured fields and can be updated by import, which they have done twice and found fiddly.",
+      "owner": "Geoff Aspinall"
+    },
+    {
+      "id": "delivery-route-planning",
+      "name": "Planning the delivery routes",
+      "description": "At about midday the transport supervisor exports the day's orders from Sage into Excel, sorts them by postcode, and builds four van loads by eye based on what he knows about which customers need to be first and which streets you cannot get a lorry down after eight. He puts the route into Paragon for the paperwork, then prints run sheets. If a big order comes in late he reshuffles by hand.",
+      "frequency": "daily",
+      "volume": {
+        "count": 240,
+        "unit": "drops",
+        "period": "per_day",
+        "is_estimate": false
+      },
+      "people_involved": {
+        "count": 2,
+        "roles": ["transport supervisor", "driver"],
+        "hours_per_run": 2
+      },
+      "current_tools": ["Sage 200", "Excel", "Paragon route planner", "printer"],
+      "pain_description": "It works, mostly, because the supervisor has done it for nineteen years and knows every customer. That is also the problem. When he was off for a fortnight after an operation the routes fell apart, two vans came back with undelivered chilled stock, and they had to write it off. Nobody else can do it and none of what he knows is written down anywhere.",
+      "risk_flags": ["customer_facing"],
+      "data_notes": "Order and address data is structured in Sage and exports cleanly. The knowledge that actually drives the decisions is in the supervisor's head and is not recorded at all. Paragon holds the routes once built.",
+      "owner": "Dave Hollis"
+    },
+    {
+      "id": "credit-control",
+      "name": "Credit control and account holds",
+      "description": "The credit controller runs an aged debt report out of Sage every Monday, works down it, and rings the customers who are over terms. She emails statements to the ones she cannot reach. If an account goes past sixty days she asks a director whether to put it on hold, and if it goes on hold she has to tell telesales, the warehouse, and the drivers, which she does by walking round or on WhatsApp. Sometimes a held order goes out anyway.",
+      "frequency": "weekly",
+      "volume": {
+        "count": 130,
+        "unit": "overdue accounts",
+        "period": "per_week",
+        "is_estimate": false
+      },
+      "people_involved": {
+        "count": 3,
+        "roles": ["credit controller", "director", "telesales assistant"],
+        "hours_per_run": 12
+      },
+      "current_tools": ["Sage 200", "Outlook", "phone", "WhatsApp Business", "Excel"],
+      "pain_description": "They wrote off forty one thousand pounds of bad debt last year, and two of those customers had carried on taking deliveries for weeks after going on hold because the message did not reach the warehouse in time. Debtor days have gone from thirty eight to fifty two over three years. The credit controller says she spends half her week leaving voicemails.",
+      "risk_flags": ["handles_money", "customer_facing"],
+      "data_notes": "Sage 200 holds the ledger and produces the aged debt report reliably. Everything about what was said to whom lives in the credit controller's own notebook and a spreadsheet she keeps.",
+      "owner": "Marion Best"
+    },
+    {
+      "id": "temperature-log-checks",
+      "name": "Recording chiller temperature checks",
+      "description": "Twice a day a warehouse supervisor walks the chillers and the freezer, reads each display, and writes the figure on a paper log on a clipboard by the door. At the end of the month the logs go in a lever arch file in the office in case the environmental health officer asks for them.",
+      "frequency": "daily",
+      "volume": {
+        "count": 9,
+        "unit": "temperature readings",
+        "period": "per_run",
+        "is_estimate": false
+      },
+      "people_involved": {
+        "count": 2,
+        "roles": ["warehouse supervisor"],
+        "hours_per_run": 0.25
+      },
+      "current_tools": ["paper", "clipboard", "lever arch file"],
+      "pain_description": "It gets done, but not always at the right times, and the readings for a Sunday are sometimes filled in on the Monday from memory. If a chiller drifted overnight nobody would know until the morning. They had a near miss in the hot spell last July when a door seal failed and they lost about four thousand pounds of stock, which a night alarm would have caught. The environmental health officer commented on the handwriting at the last visit.",
+      "risk_flags": ["safety_critical", "regulated_data", "legally_binding"],
+      "data_notes": "Entirely paper and handwritten. The chiller units have digital displays and two of the newer ones apparently have a data output, but nobody has ever looked into it.",
+      "owner": "Dave Hollis"
+    }
+  ]
+}

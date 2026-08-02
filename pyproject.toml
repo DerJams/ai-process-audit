@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ai-process-audit"
+version = "0.1.0"
+description = "A decision engine that scores business processes for automation potential and writes an audit report."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "jsonschema>=4.20",
+    "jinja2>=3.1",
+    "weasyprint>=61",
+]
+
+[project.scripts]
+ai-process-audit = "ai_process_audit.cli:main"
+
+[tool.setuptools]
+packages = [
+    "ai_process_audit",
+    "ai_process_audit.intake",
+    "ai_process_audit.model",
+    "ai_process_audit.processmap",
+    "ai_process_audit.report",
+    "ai_process_audit.scoring",
+]
+
+[tool.setuptools.package-data]
+"ai_process_audit.intake" = ["schema.json"]
+"ai_process_audit.report" = ["templates/*.j2"]

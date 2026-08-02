@@ -1,0 +1,70 @@
+{
+  "gold_format": "1",
+  "intake_file": "../intakes/redwood-plumbing.json",
+  "rubric_version": "1.0.0-draft",
+  "labelled_by": "",
+  "labelled_on": "",
+  "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Do not change a label to make the engine agree.",
+  "processes": {
+    "job-sheet-to-invoice": {
+      "process_name": "Turning job sheets into invoices",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "quote-follow-up": {
+      "process_name": "Chasing unaccepted quotes",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "gas-safety-certificates": {
+      "process_name": "Issuing and filing gas safety certificates",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "van-stock-restock": {
+      "process_name": "Restocking the vans",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    },
+    "annual-insurance-renewal": {
+      "process_name": "Renewing the business insurance",
+      "notes": "",
+      "criteria": {
+        "pain": null,
+        "frequency": null,
+        "volume": null,
+        "data_availability": null,
+        "implementation_risk": null,
+        "return_band": null
+      }
+    }
+  }
+}

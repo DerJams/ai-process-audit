@@ -1,0 +1,17 @@
+# Runtime dependencies. Three, deliberately.
+#
+# jsonschema  validates the intake file
+# jinja2      renders the report templates
+# weasyprint  turns the HTML report into a PDF
+#
+# WeasyPrint needs the Pango and GObject native libraries at runtime. It installs
+# cleanly everywhere, but on Windows it cannot load them without the GTK runtime, and
+# on Windows ARM64 that runtime is not available at all. The engine handles this: the
+# markdown and HTML reports are always written, and the HTML can be printed to PDF
+# from any browser. See README.md under Known limits.
+#
+# Tests use unittest from the standard library, so there is no test dependency.
+
+jsonschema>=4.20
+jinja2>=3.1
+weasyprint>=61

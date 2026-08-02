@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ai-process-audit/schemas/intake-1.1.0.json",
+  "$id": "https://github.com/ai-process-audit/schemas/intake-1.2.0.json",
   "title": "AI Process Audit intake",
   "description": "A structured description of a business and the processes it runs. This is the only input to the engine. Every field asks for something a business owner can answer from memory, which is why there are no cost fields, no case identifiers, and no org chart.",
   "type": "object",
@@ -10,7 +10,7 @@
     "schema_version": {
       "description": "Version of this intake schema the file was written against.",
       "type": "string",
-      "const": "1.1.0"
+      "const": "1.2.0"
     },
     "intake_id": {
       "description": "Optional stable identifier for this intake, used to match gold labels in the eval harness.",
@@ -223,12 +223,11 @@
           "type": "boolean"
         },
         "risk_flags": {
-          "description": "Optional. Properties of the process that raise implementation risk. Absent means none were reported, not that none exist.",
+          "description": "Optional. Properties of the process that raise implementation risk. Absent means none were reported, not that none exist. Whether a process is customer facing is not listed here, because it has its own field.",
           "type": "array",
           "items": {
             "type": "string",
             "enum": [
-              "customer_facing",
               "handles_money",
               "regulated_data",
               "safety_critical",
@@ -236,7 +235,7 @@
             ]
           },
           "uniqueItems": true,
-          "maxItems": 5
+          "maxItems": 4
         },
         "data_notes": {
           "description": "Optional. Where the information lives and what shape it is in. Read by the data availability criterion.",

@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "intake_id": "redwood-plumbing",
   "collected_on": "2026-07-14",
   "business": {
@@ -52,7 +52,6 @@
       "baseline_metric": "Xero shows the gap between job completion and invoice sent, currently averaging about 12 days",
       "customer_facing": true,
       "risk_flags": [
-        "customer_facing",
         "handles_money"
       ],
       "data_notes": "The job sheets are paper and handwritten. Prices live in a Google Sheet that Denise maintains by hand from supplier price lists that arrive as PDFs. Xero has the customer records and is up to date.",
@@ -90,9 +89,7 @@
       "decision_type": "judgment_heavy",
       "baseline_metric": null,
       "customer_facing": true,
-      "risk_flags": [
-        "customer_facing"
-      ],
+      "risk_flags": [],
       "data_notes": "Quotes exist as PDFs in an Outlook sent folder and as Word files on the shared drive, named inconsistently. The spreadsheet log is around half complete and the dates in it are not reliable.",
       "owner": "Martin Reilly"
     },
@@ -131,8 +128,7 @@
       "risk_flags": [
         "regulated_data",
         "safety_critical",
-        "legally_binding",
-        "customer_facing"
+        "legally_binding"
       ],
       "data_notes": "Certificates are PDFs, structured by the Gas Safe app but only readable as documents. Expiry dates are hand typed into a spreadsheet. Property addresses are free text and inconsistent.",
       "owner": "Denise Okafor"

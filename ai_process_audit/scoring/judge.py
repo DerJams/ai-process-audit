@@ -115,12 +115,13 @@ _PAIN_WORDS: tuple[str, ...] = (
     "argument", "escalate", "refund", "write off", "bad debt",
 )
 
+# Whether a process is customer facing is deliberately not in here. It has its own
+# field, and counting it in both places would have scored the same fact twice.
 _RISK_BY_FLAG: dict[str, int] = {
     "safety_critical": 5,
     "legally_binding": 5,
     "regulated_data": 4,
     "handles_money": 4,
-    "customer_facing": 3,
 }
 
 # How much each decision type moves implementation risk. A judgement heavy process

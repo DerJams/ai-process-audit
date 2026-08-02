@@ -1,6 +1,6 @@
 # Automation Opportunity Rubric
 
-**Version: 1.2.0-draft**
+**Version: 1.2.1-draft**
 **Status: DRAFT. Not approved. Weights and criteria are proposals awaiting review.**
 
 This file is the single source of truth for scoring. The engine reads the machine
@@ -104,6 +104,12 @@ down.
 rework, which costs time. An error that reaches a customer is a relationship cost,
 which is not recovered by fixing the error. The same mistake is worth more when
 somebody outside sees it.
+
+This field is the only place customer reach is recorded. It used to be available as a
+`risk_flags` value as well, which meant the same fact could be counted twice in one
+score, and an intake could state it both ways and disagree with itself. `risk_flags`
+now covers only what the boolean cannot say: money, regulated data, safety, and legal
+weight.
 
 | Score | Anchor |
 | --- | --- |
@@ -244,6 +250,7 @@ what a change has to cite.
 | 1.0.0-draft | 2026-08-02 | First draft. Not approved for use. |
 | 1.1.0-draft | 2026-08-02 | Added the implementation risk band cap. Resolved the four open questions, keeping all weights as drafted. Weights now change only on gold set evidence. Still not approved. |
 | 1.2.0-draft | 2026-08-02 | Return band anchors now read time spent and baseline metric, with a criterion cap at 2 where nothing is tracked. Implementation risk anchors now read decision type and customer facing, with stated conservative defaults when either is absent. Weights unchanged. Risk band cap unchanged. Still not approved. |
+| 1.2.1-draft | 2026-08-02 | Customer reach is now read only from the customer_facing field. It was also a risk_flags value, so implementation risk could count the same fact twice. No weights, anchors, or caps changed. Still not approved. |
 
 ## Machine readable specification
 
@@ -251,7 +258,7 @@ The engine parses the block below. Nothing else in this file is read by code.
 
 ```rubric-spec
 {
-  "version": "1.2.0-draft",
+  "version": "1.2.1-draft",
   "approved": false,
   "scale": {"min": 1, "max": 5},
   "criteria": [

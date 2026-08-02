@@ -143,4 +143,4 @@ class Intake:
     business: Business
     processes: tuple[Process, ...] = field(default_factory=tuple)
     collected_on: str | None = None
-    schema_version: str = "1.1.0"
+    schema_version: str = "1.2.0"

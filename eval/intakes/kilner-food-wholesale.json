@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "intake_id": "kilner-food-wholesale",
   "collected_on": "2026-07-28",
   "business": {
@@ -56,7 +56,6 @@
       "baseline_metric": "credits raised for wrong deliveries, just over sixty thousand pounds last year",
       "customer_facing": true,
       "risk_flags": [
-        "customer_facing",
         "handles_money"
       ],
       "data_notes": "Sage 200 holds products, prices, and customers in structured form. Phone orders exist only on the paper pad until keyed. WhatsApp orders are free text messages, often with photos of a handwritten list. Website orders come in structured and go straight into Sage.",
@@ -133,9 +132,7 @@
       "decision_type": "judgment_heavy",
       "baseline_metric": "drops completed per van per day, off the run sheets, about 60",
       "customer_facing": true,
-      "risk_flags": [
-        "customer_facing"
-      ],
+      "risk_flags": [],
       "data_notes": "Order and address data is structured in Sage and exports cleanly. The knowledge that actually drives the decisions is in the supervisor's head and is not recorded at all. Paragon holds the routes once built.",
       "owner": "Dave Hollis"
     },
@@ -174,8 +171,7 @@
       "baseline_metric": "debtor days, currently 52, up from 38 three years ago",
       "customer_facing": true,
       "risk_flags": [
-        "handles_money",
-        "customer_facing"
+        "handles_money"
       ],
       "data_notes": "Sage 200 holds the ledger and produces the aged debt report reliably. Everything about what was said to whom lives in the credit controller's own notebook and a spreadsheet she keeps.",
       "owner": "Marion Best"

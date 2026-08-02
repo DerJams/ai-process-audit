@@ -143,7 +143,7 @@ check, so a typo fails when the rubric loads instead of silently never firing.
 
 ## Intake fields
 
-The schema is `intake/schema.json`, currently version 1.1.0. The rule behind it: the
+The schema is `intake/schema.json`, currently version 1.2.0. The rule behind it: the
 intake only asks what a business owner can answer from memory, in one sitting,
 without opening a system or asking their accountant. That is why there are no cost
 fields, no case identifiers, no event logs, and no org chart. A field nobody can
@@ -173,8 +173,8 @@ Per process:
 | `pain_description` | yes | What goes wrong, what it costs, who feels it | pain |
 | `decision_type` | no | `rule_based`, `mixed`, or `judgment_heavy` | implementation risk |
 | `baseline_metric` | no | Any number the business tracks for this today. Null means none | return band, and its cap |
-| `customer_facing` | no | Whether a mistake is seen by a customer | implementation risk |
-| `risk_flags` | no | Properties that raise risk, from a fixed list | implementation risk |
+| `customer_facing` | no | Whether a mistake is seen by a customer. The only place customer reach is recorded | implementation risk |
+| `risk_flags` | no | Money, regulated data, safety, or legal weight. Customer reach is not here, it has its own field | implementation risk |
 | `data_notes` | no | Where the information lives and what shape it is in | data availability |
 | `owner` | no | Who is accountable | report |
 | `id` | no | Stable identifier. Gold labels key on it, so set it if the intake will be labelled | eval harness |

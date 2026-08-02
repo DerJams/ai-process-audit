@@ -59,7 +59,7 @@ EM_DASH = chr(0x2014)
 
 def minimal_intake() -> dict:
     return {
-        "schema_version": "1.1.0",
+        "schema_version": "1.2.0",
         "intake_id": "test-business",
         "business": {
             "name": "Test Business",
@@ -167,6 +167,31 @@ class TestValidator(unittest.TestCase):
         document = minimal_intake()
         document["processes"][0]["baseline_metric"] = None
         self.assertIsNotNone(validate_intake(document))
+
+    def test_customer_facing_is_not_a_risk_flag(self):
+        # It has its own boolean field. Allowing both would let one fact be counted
+        # twice in the risk score, and let an intake contradict itself.
+        document = minimal_intake()
+        document["processes"][0]["risk_flags"] = ["customer_facing"]
+        with self.assertRaises(IntakeValidationError):
+            validate_intake(document)
+
+    def test_the_remaining_risk_flags_are_still_accepted(self):
+        document = minimal_intake()
+        document["processes"][0]["risk_flags"] = [
+            "handles_money",
+            "regulated_data",
+            "safety_critical",
+            "legally_binding",
+        ]
+        self.assertIsNotNone(validate_intake(document))
+
+    def test_no_synthetic_intake_uses_the_retired_flag(self):
+        for path in ALL_INTAKES:
+            with self.subTest(intake=path.name):
+                document = load_intake(path)
+                for process in document["processes"]:
+                    self.assertNotIn("customer_facing", process.get("risk_flags", []))
 
     def test_bad_decision_type_is_rejected(self):
         document = minimal_intake()

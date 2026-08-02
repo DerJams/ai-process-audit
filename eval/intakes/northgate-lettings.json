@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1.0",
+  "schema_version": "1.2.0",
   "intake_id": "northgate-lettings",
   "collected_on": "2026-07-21",
   "business": {
@@ -56,7 +56,6 @@
       "baseline_metric": "open maintenance jobs showing in Reapit, usually around 60 at any time",
       "customer_facing": true,
       "risk_flags": [
-        "customer_facing",
         "legally_binding",
         "regulated_data"
       ],
@@ -99,7 +98,6 @@
       "customer_facing": true,
       "risk_flags": [
         "handles_money",
-        "customer_facing",
         "legally_binding"
       ],
       "data_notes": "Bank feed in Sage is structured and reliable. Expected rent comes out of Reapit as a CSV export, which the accounts person does by hand each morning. Her chase tracking lives in her own Excel file on her desktop.",
@@ -142,8 +140,7 @@
       "customer_facing": true,
       "risk_flags": [
         "regulated_data",
-        "legally_binding",
-        "customer_facing"
+        "legally_binding"
       ],
       "data_notes": "Application data arrives as PDFs, phone photos, and free text emails. The referencing portal has an API according to the provider, but nobody at Northgate has asked about it. Reapit holds the outcome.",
       "owner": "Sam Achebe"
@@ -183,7 +180,6 @@
       "customer_facing": true,
       "risk_flags": [
         "handles_money",
-        "customer_facing",
         "regulated_data"
       ],
       "data_notes": "Reapit holds the transactions in structured form and exports cleanly to Excel. Contractor invoices are coded by hand when they are entered, which is where the errors come from.",
@@ -226,7 +222,6 @@
       "risk_flags": [
         "legally_binding",
         "handles_money",
-        "customer_facing",
         "regulated_data"
       ],
       "data_notes": "Inventories are PDF reports from an inventory clerk. Check out photos are on personal phones and get uploaded inconsistently. The deposit scheme has a portal with no export that anyone knows of.",

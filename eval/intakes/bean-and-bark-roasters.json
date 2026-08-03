@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.2.0",
+  "intake_id": "roast-co-001",
+  "collected_on": "2026-08-01",
+  "business": {
+    "name": "Bean and Bark Roasters",
+    "industry": "Coffee Roasting",
+    "headcount": 12,
+    "tools_in_use": ["QuickBooks", "Cropster", "Google Workspace", "Shopify"],
+    "notes": "We are growing super fast but everything is held together with duct tape. Half the team works out of a warehouse with terrible wifi."
+  },
+  "processes": [
+    {
+      "id": "green-intake",
+      "name": "Green Coffee Intake",
+      "description": "The delivery truck backs up to the bay and drops the pallets. First Steve has to cut the shrink wrap off. Then he counts the burlap sacks to make sure we got what we ordered. Once counted, he writes the totals on a clipboard. Next he drives the forklift to stack them in the back room.",
+      "frequency": "weekly",
+      "volume": {"count": 2, "unit": "pallets", "period": "per_week", "is_estimate": true},
+      "people_involved": {"count": 2, "roles": ["Roaster", "Warehouse Staff"]},
+      "current_tools": ["Clipboard", "Forklift", "Pen"],
+      "pain_description": "Steve loses the clipboard all the time. Or his handwriting is so bad I cannot read it when I try to update our inventory spreadsheet on Fridays. We run out of specific beans because the counts are wrong.",
+      "time_spent": {"minutes_per_case": 45},
+      "baseline_metric": null,
+      "customer_facing": false,
+      "decision_type": "rule_based",
+      "data_notes": "Paper clipboard and human memory mostly."
+    },
+    {
+      "id": "wholesale-orders",
+      "name": "Wholesale Order Fulfillment",
+      "description": "Customers email us their orders overnight. Next morning, Sarah goes through the inbox and prints every email. Then she highlights the blends we need. Once printed, she walks the stack over to production. Next they roast the beans and we pack them into boxes.",
+      "frequency": "daily",
+      "volume": {"count": 300, "unit": "orders", "period": "per_week", "is_estimate": true},
+      "people_involved": {"count": 3, "roles": ["Admin", "Roaster", "Packer"]},
+      "current_tools": ["Gmail", "Printer", "Highlighter"],
+      "pain_description": "It takes half the morning just to read emails. Sometimes people write 'the usual' and Sarah has to go dig through old invoices to find what they mean. The mismatch between her printing time and actual roasting time causes bottlenecks.",
+      "time_spent": {"hours_per_week": 35, "minutes_per_case": 10},
+      "baseline_metric": "getting everything roasted and out the door by 3pm",
+      "customer_facing": true,
+      "decision_type": "mixed",
+      "risk_flags": ["handles_money"]
+    },
+    {
+      "id": "roast-profiling",
+      "name": "Roast Profiling",
+      "description": "When we get a new seasonal coffee in, I have to figure out how long to roast it. First I do a small batch in the sample roaster. Then I brew it and taste it. Next I tweak the temperature curves in Cropster. Once it tastes right, I write the final recipe on a whiteboard.",
+      "frequency": "ad_hoc",
+      "volume": {"count": 4, "unit": "batches", "period": "per_month", "is_estimate": false},
+      "people_involved": {"count": 1, "roles": ["Head Roaster"]},
+      "current_tools": ["Sample Roaster", "Cropster", "Whiteboard"],
+      "pain_description": "It relies entirely on my taste buds. If I am sick, we cannot launch a new coffee. Also the whiteboard gets erased by accident sometimes and I have to remember the exact drop temperature.",
+      "time_spent": {"hours_per_week": 5}
+    },
+    {
+      "id": "equipment-calibration",
+      "name": "Equipment Calibration",
+      "description": "Once a year we have to recalibrate the industrial scales and the moisture meter. The inspector comes in and asks for our logs. Then I dig through a filing cabinet to find last year's certificates. Next he runs his weights. Once done he hands me a piece of paper which I scan into Google Drive.",
+      "frequency": "annually",
+      "volume": {"count": 1, "unit": "audit", "period": "per_year"},
+      "people_involved": {"count": 1, "roles": ["Owner"]},
+      "current_tools": ["Filing Cabinet", "Scanner", "Google Drive"],
+      "pain_description": "I always forget where I saved the scans. It is a mad dash the day before the inspector arrives. The fine is big if we miss it.",
+      "time_spent": {"hours_per_week": 0.5},
+      "baseline_metric": null,
+      "customer_facing": false,
+      "decision_type": "rule_based",
+      "owner": "Owner"
+    },
+    {
+      "id": "retail-bagging",
+      "name": "Retail Bag Labelling",
+      "description": "The roasted beans sit in cooling bins. First the packaging guys scoop them into 12 ounce retail bags. Then they put them on the heat sealer one by one. Next they manually stick our logo label on the front and write the roast date in sharpie. Once a box of 50 is full, they move it to the retail shelf.",
+      "frequency": "continuous",
+      "volume": {"count": 1000, "unit": "bags", "period": "per_week", "is_estimate": true},
+      "people_involved": {"count": 2, "roles": ["Packer"]},
+      "current_tools": ["Heat Sealer", "Sharpie", "Labels"],
+      "pain_description": "Sharpies smudge all over the bags. The labels get put on crooked which makes us look cheap to retail customers. Plus scooping by hand is hurting their wrists.",
+      "time_spent": {"hours_per_week": 25},
+      "baseline_metric": "bagging about 100 bags an hour",
+      "customer_facing": true,
+      "decision_type": "rule_based"
+    }
+  ]
+}

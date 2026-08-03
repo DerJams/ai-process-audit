@@ -19,7 +19,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from ai_process_audit.scoring.rubric import load_rubric
 from eval.harness import GoldError, compare_one, run, summarise
 
-INTAKE = REPO_ROOT / "eval" / "intakes" / "redwood-plumbing.json"
+INTAKE = REPO_ROOT / "eval" / "intakes" / "corner-pharmacy.json"
+LABELLED_PROCESS = "prescription-intake"
 
 
 def gold_document(rubric_version: str, criteria: dict[str, int | None]) -> dict:
@@ -30,8 +31,8 @@ def gold_document(rubric_version: str, criteria: dict[str, int | None]) -> dict:
         "labelled_by": "A Person",
         "labelled_on": "2026-08-01",
         "processes": {
-            "job-sheet-to-invoice": {
-                "process_name": "Turning job sheets into invoices",
+            LABELLED_PROCESS: {
+                "process_name": "Prescription Intake",
                 "notes": "a note",
                 "criteria": dict(criteria),
                 "rationales": {},
@@ -81,7 +82,7 @@ class TestGoldGuards(HarnessTestCase):
     def test_unknown_process_id_is_refused(self):
         document = gold_document(self.rubric.version, self.full_labels)
         document["processes"]["not-a-real-process"] = document["processes"].pop(
-            "job-sheet-to-invoice"
+            "prescription-intake"
         )
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_gold(directory, document)
@@ -109,13 +110,13 @@ class TestAgreementMaths(HarnessTestCase):
             engine_scores = {
                 row["process_id"]: row for row in comparison.process_rows
             }
-            self.assertIn("job-sheet-to-invoice", engine_scores)
+            self.assertIn("prescription-intake", engine_scores)
 
             from ai_process_audit.pipeline import audit_file
 
             result = audit_file(INTAKE)
             opportunity = next(
-                item for item in result.opportunities if item.process.id == "job-sheet-to-invoice"
+                item for item in result.opportunities if item.process.id == "prescription-intake"
             )
             matching = {c.id: c.raw_score for c in opportunity.criteria}
             path = self.write_gold(
@@ -186,7 +187,7 @@ class TestAgreementMaths(HarnessTestCase):
     def test_per_criterion_rationale_beats_the_process_note(self):
         labels = {criterion.id: 1 for criterion in self.rubric.criteria}
         document = gold_document(self.rubric.version, labels)
-        document["processes"]["job-sheet-to-invoice"]["rationales"] = {
+        document["processes"][LABELLED_PROCESS]["rationales"] = {
             "pain": "the pain description names a specific cost",
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -202,7 +203,7 @@ class TestAgreementMaths(HarnessTestCase):
     def test_rationale_for_an_unknown_criterion_is_refused(self):
         labels = {criterion.id: 1 for criterion in self.rubric.criteria}
         document = gold_document(self.rubric.version, labels)
-        document["processes"]["job-sheet-to-invoice"]["rationales"] = {"vibes": "hmm"}
+        document["processes"][LABELLED_PROCESS]["rationales"] = {"vibes": "hmm"}
         with tempfile.TemporaryDirectory() as directory:
             path = self.write_gold(directory, document)
             with self.assertRaises(GoldError) as caught:

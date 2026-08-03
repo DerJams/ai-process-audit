@@ -644,7 +644,7 @@ class TestJudge(unittest.TestCase):
 class TestScoring(unittest.TestCase):
     def setUp(self):
         self.rubric = load_rubric()
-        self.intake = normalize_intake(load_intake(INTAKE_DIR / "redwood-plumbing.json"))
+        self.intake = normalize_intake(load_intake(INTAKE_DIR / "corner-pharmacy.json"))
 
     def test_scoring_produces_one_opportunity_per_process(self):
         result = score_intake(self.intake, rubric=self.rubric)
@@ -794,7 +794,7 @@ class TestScoring(unittest.TestCase):
 class TestReport(unittest.TestCase):
     def setUp(self):
         self.rubric = load_rubric()
-        self.intake = normalize_intake(load_intake(INTAKE_DIR / "northgate-lettings.json"))
+        self.intake = normalize_intake(load_intake(INTAKE_DIR / "boutique-landscaping.json"))
         self.result = score_intake(self.intake, rubric=self.rubric)
 
     def test_markdown_contains_the_disclosure_and_every_process(self):
@@ -970,7 +970,7 @@ class TestEndToEnd(unittest.TestCase):
 
         buffer = io.StringIO()
         with contextlib.redirect_stdout(buffer):
-            code = cli_main(["score", str(INTAKE_DIR / "kilner-food-wholesale.json"), "--json"])
+            code = cli_main(["score", str(INTAKE_DIR / "bean-and-bark-roasters.json"), "--json"])
         self.assertEqual(code, 0)
         payload = json.loads(buffer.getvalue())
         self.assertEqual(payload["judge_mode"], "stub")

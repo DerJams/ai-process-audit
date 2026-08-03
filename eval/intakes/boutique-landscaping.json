@@ -1,0 +1,86 @@
+{
+  "schema_version": "1.2.0",
+  "intake_id": "green-thumb-002",
+  "collected_on": "2026-08-01",
+  "business": {
+    "name": "Boutique Landscaping and Garden Design",
+    "industry": "Landscaping Services",
+    "headcount": 8,
+    "tools_in_use": ["QuickBooks", "Google Calendar", "iMessage", "Notes App"],
+    "notes": "Most of the guys on the crew do not use computers at all, just their phones."
+  },
+  "processes": [
+    {
+      "id": "initial-consult",
+      "name": "Initial Client Consultation",
+      "description": "People call the office to ask for a backyard makeover. First our receptionist writes down their address on a sticky note. Then I drive out to their house to walk the yard. Next I take pictures on my iPhone and sketch some ideas on an iPad. Once we agree on a rough idea, I tell them I will email a quote.",
+      "frequency": "several_times_per_week",
+      "volume": {"count": 15, "unit": "consults", "period": "per_month"},
+      "people_involved": {"count": 2, "roles": ["Owner", "Receptionist"]},
+      "current_tools": ["Sticky Notes", "iPhone", "iPad"],
+      "pain_description": "I spend hours driving around to people who turn out to have tiny budgets. The sticky notes get lost on my dashboard. Half the time I forget to email the quote because I have no tracking system.",
+      "time_spent": {"minutes_per_case": 90},
+      "baseline_metric": "signing up about one in four people I visit",
+      "customer_facing": true,
+      "decision_type": "judgment_heavy",
+      "risk_flags": []
+    },
+    {
+      "id": "material-sourcing",
+      "name": "Material Sourcing and Ordering",
+      "description": "Every Thursday I look at the jobs booked for next week. First I make a list of plants and mulch we need. Then I call three different nurseries to see who has what in stock. Next I give them my credit card over the phone. Once ordered, I text the foreman to tell him where to drive the truck on Monday.",
+      "frequency": "weekly",
+      "volume": {"count": 20, "unit": "orders", "period": "per_week", "is_estimate": true},
+      "people_involved": {"count": 1, "roles": ["Owner"]},
+      "current_tools": ["Phone", "Credit Card", "Notebook"],
+      "pain_description": "Calling nurseries takes forever because they never answer the phone. Sometimes they promise a plant and then when my crew shows up, it is gone. It wastes my entire Thursday morning.",
+      "time_spent": {"hours_per_week": 15},
+      "baseline_metric": null,
+      "customer_facing": false,
+      "decision_type": "mixed",
+      "risk_flags": ["handles_money"]
+    },
+    {
+      "id": "crew-scheduling",
+      "name": "Crew Scheduling",
+      "description": "I look at the weather forecast on Sunday night. First I look at our whiteboard of jobs. Then I text all the crew leaders a list of addresses for the week. Next they reply to confirm they got it. Once they reply, I update a shared Google Calendar so everyone can see it.",
+      "frequency": "weekly",
+      "volume": {"count": 4, "unit": "crews", "period": "per_week"},
+      "people_involved": {"count": 4, "roles": ["Owner", "Crew Leader"]},
+      "current_tools": ["Whiteboard", "iMessage", "Google Calendar"],
+      "pain_description": "If it rains on Tuesday, the whole schedule is ruined. I have to text everyone again. It is incredibly stressful to do on my Sunday evenings.",
+      "time_spent": {"hours_per_week": 4},
+      "baseline_metric": null
+    },
+    {
+      "id": "month-end-invoicing",
+      "name": "Month End Invoicing",
+      "description": "At the end of the month, my wife goes into QuickBooks. First she looks at the paper timesheets the guys turn in to see how many hours they worked at each house. Then she types those hours into the software. Next she generates a PDF invoice. Once ready, she emails it to the client with a payment link.",
+      "frequency": "monthly",
+      "volume": {"count": 50, "unit": "invoices", "period": "per_month"},
+      "people_involved": {"count": 1, "roles": ["Office Manager"]},
+      "current_tools": ["Paper Timesheets", "QuickBooks"],
+      "pain_description": "The handwriting on the timesheets is awful. Sometimes a guy forgets to hand it in and we literally forget to bill the client. The manual data entry takes her two full days.",
+      "time_spent": {"minutes_per_case": 20},
+      "baseline_metric": "getting paid within 14 days usually",
+      "customer_facing": true,
+      "decision_type": "rule_based",
+      "risk_flags": ["handles_money", "legally_binding"]
+    },
+    {
+      "id": "warranty-replacements",
+      "name": "Plant Warranty Replacements",
+      "description": "Sometimes a tree dies within the first year. A customer will email us a picture of a dead tree. First I have to check our old files to see when we planted it to make sure it is under warranty. Then I drive out to verify it is actually dead. Next we dig it up and plant a new one. Once done I email them to say it is fixed.",
+      "frequency": "ad_hoc",
+      "volume": {"count": 5, "unit": "claims", "period": "per_quarter", "is_estimate": true},
+      "people_involved": {"count": 2, "roles": ["Owner", "Crew Member"]},
+      "current_tools": ["Paper Files", "Email", "Shovel"],
+      "pain_description": "Finding out if they are still in the warranty window is a nightmare. I have to dig through piles of paper folders. We probably replace trees for free that we do not have to.",
+      "time_spent": {"minutes_per_case": 120},
+      "baseline_metric": "under five warranty claims a quarter",
+      "customer_facing": true,
+      "decision_type": "judgment_heavy",
+      "risk_flags": []
+    }
+  ]
+}

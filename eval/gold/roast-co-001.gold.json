@@ -1,13 +1,13 @@
 {
   "gold_format": "2",
-  "intake_file": "../intakes/northgate-lettings.json",
+  "intake_file": "../intakes/bean-and-bark-roasters.json",
   "rubric_version": "1.2.1-draft",
   "labelled_by": "",
   "labelled_on": "",
   "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Put your reasoning for a score in rationales under the same criterion id, which is what the failure analysis prints next to the engine's reasoning. Do not change a label to make the engine agree.",
   "processes": {
-    "maintenance-triage": {
-      "process_name": "Triaging tenant maintenance reports",
+    "green-intake": {
+      "process_name": "Green Coffee Intake",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -26,8 +26,8 @@
         "return_band": ""
       }
     },
-    "rent-arrears-chasing": {
-      "process_name": "Chasing rent arrears",
+    "wholesale-orders": {
+      "process_name": "Wholesale Order Fulfillment",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -46,8 +46,8 @@
         "return_band": ""
       }
     },
-    "tenant-referencing": {
-      "process_name": "Processing tenant applications and referencing",
+    "roast-profiling": {
+      "process_name": "Roast Profiling",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -66,8 +66,8 @@
         "return_band": ""
       }
     },
-    "landlord-statements": {
-      "process_name": "Producing monthly landlord statements",
+    "equipment-calibration": {
+      "process_name": "Equipment Calibration",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -86,8 +86,8 @@
         "return_band": ""
       }
     },
-    "deposit-return": {
-      "process_name": "Returning tenancy deposits",
+    "retail-bagging": {
+      "process_name": "Retail Bag Labelling",
       "notes": "",
       "criteria": {
         "pain": null,

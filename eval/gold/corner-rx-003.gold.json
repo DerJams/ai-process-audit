@@ -1,13 +1,13 @@
 {
   "gold_format": "2",
-  "intake_file": "../intakes/kilner-food-wholesale.json",
+  "intake_file": "../intakes/corner-pharmacy.json",
   "rubric_version": "1.2.1-draft",
   "labelled_by": "",
   "labelled_on": "",
   "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Put your reasoning for a score in rationales under the same criterion id, which is what the failure analysis prints next to the engine's reasoning. Do not change a label to make the engine agree.",
   "processes": {
-    "order-taking": {
-      "process_name": "Taking customer orders",
+    "prescription-intake": {
+      "process_name": "Prescription Intake",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -26,8 +26,8 @@
         "return_band": ""
       }
     },
-    "supplier-price-updates": {
-      "process_name": "Updating supplier price changes",
+    "inventory-audit": {
+      "process_name": "Inventory Auditing",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -46,8 +46,8 @@
         "return_band": ""
       }
     },
-    "delivery-route-planning": {
-      "process_name": "Planning the delivery routes",
+    "insurance-reconciliation": {
+      "process_name": "Insurance Reconciliation",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -66,8 +66,8 @@
         "return_band": ""
       }
     },
-    "credit-control": {
-      "process_name": "Credit control and account holds",
+    "compounding-meds": {
+      "process_name": "Compounding Special Meds",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -86,8 +86,8 @@
         "return_band": ""
       }
     },
-    "temperature-log-checks": {
-      "process_name": "Recording chiller temperature checks",
+    "tax-preparation": {
+      "process_name": "End of Year Tax Prep",
       "notes": "",
       "criteria": {
         "pain": null,

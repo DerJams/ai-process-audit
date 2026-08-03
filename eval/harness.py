@@ -3,7 +3,7 @@
 Run it:
 
     python -m eval.harness
-    python -m eval.harness --gold eval/gold/redwood-plumbing.gold.json
+    python -m eval.harness --gold eval/gold/corner-rx-003.gold.json
 
 Two rules are enforced here rather than left to discipline:
 

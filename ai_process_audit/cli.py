@@ -1,9 +1,9 @@
 """Command line interface.
 
-  python -m ai_process_audit validate eval/intakes/redwood-plumbing.json
-  python -m ai_process_audit map      eval/intakes/redwood-plumbing.json
-  python -m ai_process_audit score    eval/intakes/redwood-plumbing.json
-  python -m ai_process_audit report   eval/intakes/redwood-plumbing.json --out out/redwood
+  python -m ai_process_audit validate eval/intakes/corner-pharmacy.json
+  python -m ai_process_audit map      eval/intakes/corner-pharmacy.json
+  python -m ai_process_audit score    eval/intakes/corner-pharmacy.json
+  python -m ai_process_audit report   eval/intakes/corner-pharmacy.json --out out/pharmacy
   python -m ai_process_audit rubric
 
 Exit codes: 0 success, 1 a problem with the input, 2 a problem with the rubric.

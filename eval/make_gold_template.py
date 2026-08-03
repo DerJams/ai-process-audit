@@ -1,6 +1,6 @@
 """Write an empty gold label template for an intake.
 
-    python -m eval.make_gold_template eval/intakes/redwood-plumbing.json
+    python -m eval.make_gold_template eval/intakes/corner-pharmacy.json
 
 This produces a file with every process and every criterion listed and every score
 set to null. It does not fill anything in, and it will refuse to overwrite a file

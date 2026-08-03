@@ -23,11 +23,12 @@ that says whether the engine is any good.
 Generate an empty template:
 
 ```bash
-python -m eval.make_gold_template eval/intakes/redwood-plumbing.json
+python -m eval.make_gold_template eval/intakes/corner-pharmacy.json
 ```
 
-That writes `eval/gold/redwood-plumbing.gold.json` with every score set to null.
-Then, with rubric.md open beside you:
+That writes `eval/gold/corner-rx-003.gold.json` with every score set to null. The
+file is named after the `intake_id` inside the intake, not after the intake filename,
+so check the path the command prints. Then, with rubric.md open beside you:
 
 1. Set `labelled_by` to your name. The harness refuses a file that has scores in it
    but does not say whose they are.

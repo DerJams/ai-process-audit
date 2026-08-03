@@ -1,13 +1,13 @@
 {
   "gold_format": "2",
-  "intake_file": "../intakes/redwood-plumbing.json",
+  "intake_file": "../intakes/boutique-landscaping.json",
   "rubric_version": "1.2.1-draft",
   "labelled_by": "",
   "labelled_on": "",
   "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Put your reasoning for a score in rationales under the same criterion id, which is what the failure analysis prints next to the engine's reasoning. Do not change a label to make the engine agree.",
   "processes": {
-    "job-sheet-to-invoice": {
-      "process_name": "Turning job sheets into invoices",
+    "initial-consult": {
+      "process_name": "Initial Client Consultation",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -26,8 +26,8 @@
         "return_band": ""
       }
     },
-    "quote-follow-up": {
-      "process_name": "Chasing unaccepted quotes",
+    "material-sourcing": {
+      "process_name": "Material Sourcing and Ordering",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -46,8 +46,8 @@
         "return_band": ""
       }
     },
-    "gas-safety-certificates": {
-      "process_name": "Issuing and filing gas safety certificates",
+    "crew-scheduling": {
+      "process_name": "Crew Scheduling",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -66,8 +66,8 @@
         "return_band": ""
       }
     },
-    "van-stock-restock": {
-      "process_name": "Restocking the vans",
+    "month-end-invoicing": {
+      "process_name": "Month End Invoicing",
       "notes": "",
       "criteria": {
         "pain": null,
@@ -86,8 +86,8 @@
         "return_band": ""
       }
     },
-    "annual-insurance-renewal": {
-      "process_name": "Renewing the business insurance",
+    "warranty-replacements": {
+      "process_name": "Plant Warranty Replacements",
       "notes": "",
       "criteria": {
         "pain": null,

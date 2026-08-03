@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.2.0",
+  "intake_id": "corner-rx-003",
+  "collected_on": "2026-08-01",
+  "business": {
+    "name": "Corner Independent Pharmacy",
+    "industry": "Retail Pharmacy",
+    "headcount": 15,
+    "tools_in_use": ["PioneerRx", "Fax Machine", "Excel", "QuickBooks"],
+    "notes": "Heavily regulated environment. We still use a lot of faxing because doctors refuse to upgrade."
+  },
+  "processes": [
+    {
+      "id": "prescription-intake",
+      "name": "Prescription Intake",
+      "description": "A patient drops off a paper script or the doctor sends an e-script. First the tech types the patient details into our pharmacy management system. Then she scans the paper if there is one. Next the system checks for drug interactions. Once typed, it goes into a digital queue for the pharmacist to review.",
+      "frequency": "continuous",
+      "volume": {"count": 200, "unit": "scripts", "period": "per_day", "is_estimate": true},
+      "people_involved": {"count": 4, "roles": ["Pharmacy Tech", "Pharmacist"]},
+      "current_tools": ["PioneerRx", "Scanner", "Fax Machine"],
+      "pain_description": "The e-scripts often have missing fields so the tech has to call the doctor. Patients stand at the counter staring at us while we do this. The typing errors can be dangerous if the pharmacist misses them.",
+      "time_spent": {"hours_per_week": 60},
+      "baseline_metric": "getting people out the door in under 15 minutes",
+      "customer_facing": true,
+      "decision_type": "judgment_heavy",
+      "risk_flags": ["regulated_data", "safety_critical"]
+    },
+    {
+      "id": "inventory-audit",
+      "name": "Inventory Auditing",
+      "description": "Every three months we have to count all the controlled substances. First we print out a massive list from the software. Then the lead pharmacist walks down every aisle with a clipboard. Next they physically count every pill in every open bottle. Once done, they type the final numbers back into the system.",
+      "frequency": "quarterly",
+      "volume": {"count": 1, "unit": "audit", "period": "per_quarter"},
+      "people_involved": {"count": 2, "roles": ["Lead Pharmacist", "Manager"]},
+      "current_tools": ["Clipboard", "PioneerRx"],
+      "pain_description": "Counting tiny pills by hand is agonizing. If we are off by even one pill, we have to recount the whole section. It takes the lead pharmacist away from actually helping patients.",
+      "time_spent": {"hours_per_week": 15},
+      "baseline_metric": "keeping shrinkage below one percent",
+      "customer_facing": false,
+      "decision_type": "rule_based",
+      "risk_flags": ["regulated_data"]
+    },
+    {
+      "id": "insurance-reconciliation",
+      "name": "Insurance Reconciliation",
+      "description": "We get electronic remittance files from the insurance companies. First the manager downloads them from a clunky portal. Then he imports them into our accounting tool. Next he goes line by line to see which claims were denied. Once he finds a denied claim, he prints it out for the techs to investigate.",
+      "frequency": "weekly",
+      "volume": {"count": 500, "unit": "claims", "period": "per_week", "is_estimate": true},
+      "people_involved": {"count": 1, "roles": ["Pharmacy Manager"]},
+      "current_tools": ["Insurance Portals", "Excel", "Printer"],
+      "pain_description": "The portals are always down. Matching a random payment amount to a specific patient is like a puzzle. We lose thousands of dollars a month because we do not have time to appeal the denied claims.",
+      "time_spent": {"hours_per_week": 10},
+      "baseline_metric": null,
+      "customer_facing": false,
+      "decision_type": "rule_based",
+      "risk_flags": ["handles_money"]
+    },
+    {
+      "id": "compounding-meds",
+      "name": "Compounding Special Meds",
+      "description": "Sometimes kids need a liquid version of a pill. First the pharmacist looks up the formula in a binder. Then they put on gloves and a mask. Next they weigh the powders on a precision scale and mix it with the liquid base. Once mixed, they pour it into a bottle and stick a custom dosage label on it.",
+      "frequency": "daily",
+      "volume": {"count": 10, "unit": "compounds", "period": "per_day"},
+      "people_involved": {"count": 2, "roles": ["Pharmacist"]},
+      "current_tools": ["Paper Binder", "Scale", "Mixing Tools"],
+      "pain_description": "Math mistakes here could literally hurt a child. The binder is old and missing pages. The workspace gets messy and we have to shut down normal operations just to give the pharmacist quiet time to mix.",
+      "time_spent": {"minutes_per_case": 30},
+      "baseline_metric": "zero error rate",
+      "customer_facing": false,
+      "decision_type": "judgment_heavy",
+      "risk_flags": ["safety_critical"]
+    },
+    {
+      "id": "tax-preparation",
+      "name": "End of Year Tax Prep",
+      "description": "At the start of the year we have to get everything ready for our accountant. First the owner exports a massive CSV from QuickBooks. Then he gathers all the physical receipts from a shoebox in the office. Next he categorizes the weird expenses in Excel. Once the spreadsheet is done, he emails it to the CPA.",
+      "frequency": "annually",
+      "volume": {"count": 1, "unit": "return", "period": "per_year"},
+      "people_involved": {"count": 1, "roles": ["Owner"]},
+      "current_tools": ["QuickBooks", "Shoebox", "Excel"],
+      "pain_description": "The shoebox method is terrible. The thermal receipts fade so you cannot read the ink. It takes the owner days to do this and it is incredibly boring.",
+      "time_spent": {"hours_per_week": 2},
+      "baseline_metric": null,
+      "customer_facing": false,
+      "decision_type": "mixed",
+      "risk_flags": ["handles_money", "legally_binding"]
+    }
+  ]
+}

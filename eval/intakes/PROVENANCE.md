@@ -37,7 +37,11 @@ second.
 
 ## Current state
 
-See [KNOWN_ISSUES.md](KNOWN_ISSUES.md). The current set has content problems found
-after generation, and a corrected set is expected from Gemini before gold labelling
-begins. Nothing in these files has been edited by hand, and nothing should be, since
-hand editing them in Claude would undo the reason a different model wrote them.
+The current set has content problems found after generation, and a corrected set is
+expected from Gemini before gold labelling begins. Nothing in these files has been
+edited by hand, and nothing should be, since hand editing them in Claude would undo
+the reason a different model wrote them.
+
+The defects are listed in [docs/known_issues_intakes.md](../../docs/known_issues_intakes.md),
+deliberately kept out of this folder so that it is not sitting next to the files a
+labeller is reading.

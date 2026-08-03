@@ -37,11 +37,14 @@ second.
 
 ## Current state
 
-The current set has content problems found after generation, and a corrected set is
-expected from Gemini before gold labelling begins. Nothing in these files has been
-edited by hand, and nothing should be, since hand editing them in Claude would undo
-the reason a different model wrote them.
+This is the corrected set. Three content problems were found in the first generation,
+sent back to Gemini, and fixed there. **Gold labelling can begin.**
 
-The defects are listed in [docs/known_issues_intakes.md](../../docs/known_issues_intakes.md),
-deliberately kept out of this folder so that it is not sitting next to the files a
-labeller is reading.
+Nothing in these files has been edited by hand, and nothing should be, since hand
+editing them in Claude would undo the reason a different model wrote them. If a
+further problem turns up, it goes back to Gemini the same way.
+
+The record of what was wrong is in
+[docs/known_issues_intakes.md](../../docs/known_issues_intakes.md), deliberately kept
+out of this folder so that it is not sitting next to the files a labeller is reading.
+It names no scoring criterion, so it is safe to read at any point.

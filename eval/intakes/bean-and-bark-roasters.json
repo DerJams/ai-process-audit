@@ -38,7 +38,8 @@
       "baseline_metric": "getting everything roasted and out the door by 3pm",
       "customer_facing": true,
       "decision_type": "mixed",
-      "risk_flags": ["handles_money"]
+      "risk_flags": ["handles_money"],
+      "data_notes": "Unstructured text in emails, manually translated to paper packing slips."
     },
     {
       "id": "roast-profiling",
@@ -49,7 +50,8 @@
       "people_involved": {"count": 1, "roles": ["Head Roaster"]},
       "current_tools": ["Sample Roaster", "Cropster", "Whiteboard"],
       "pain_description": "It relies entirely on my taste buds. If I am sick, we cannot launch a new coffee. Also the whiteboard gets erased by accident sometimes and I have to remember the exact drop temperature.",
-      "time_spent": {"hours_per_week": 5}
+      "time_spent": {"hours_per_week": 5},
+      "data_notes": "Temperature curves in Cropster, but final approved recipes only exist on the physical whiteboard."
     },
     {
       "id": "equipment-calibration",
@@ -60,11 +62,12 @@
       "people_involved": {"count": 1, "roles": ["Owner"]},
       "current_tools": ["Filing Cabinet", "Scanner", "Google Drive"],
       "pain_description": "I always forget where I saved the scans. It is a mad dash the day before the inspector arrives. The fine is big if we miss it.",
-      "time_spent": {"hours_per_week": 0.5},
+      "time_spent": {"minutes_per_case": 120},
       "baseline_metric": null,
       "customer_facing": false,
       "decision_type": "rule_based",
-      "owner": "Owner"
+      "owner": "Owner",
+      "data_notes": "Paper certificates scanned into Google Drive folders, mostly unsearchable PDFs."
     },
     {
       "id": "retail-bagging",
@@ -78,7 +81,8 @@
       "time_spent": {"hours_per_week": 25},
       "baseline_metric": "bagging about 100 bags an hour",
       "customer_facing": true,
-      "decision_type": "rule_based"
+      "decision_type": "rule_based",
+      "data_notes": "No data recorded at all, just physical counting of physical items."
     }
   ]
 }

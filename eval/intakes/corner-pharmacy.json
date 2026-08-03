@@ -23,7 +23,8 @@
       "baseline_metric": "getting people out the door in under 15 minutes",
       "customer_facing": true,
       "decision_type": "judgment_heavy",
-      "risk_flags": ["regulated_data", "safety_critical"]
+      "risk_flags": ["regulated_data", "safety_critical"],
+      "data_notes": "Structured patient profiles in PioneerRx, plus scanned TIFF images of paper scripts."
     },
     {
       "id": "inventory-audit",
@@ -34,11 +35,12 @@
       "people_involved": {"count": 2, "roles": ["Lead Pharmacist", "Manager"]},
       "current_tools": ["Clipboard", "PioneerRx"],
       "pain_description": "Counting tiny pills by hand is agonizing. If we are off by even one pill, we have to recount the whole section. It takes the lead pharmacist away from actually helping patients.",
-      "time_spent": {"hours_per_week": 15},
+      "time_spent": {"minutes_per_case": 960},
       "baseline_metric": "keeping shrinkage below one percent",
       "customer_facing": false,
       "decision_type": "rule_based",
-      "risk_flags": ["regulated_data"]
+      "risk_flags": ["regulated_data"],
+      "data_notes": "Exported lists from PioneerRx checked off on paper clipboards, then re-entered as structured adjustments."
     },
     {
       "id": "insurance-reconciliation",
@@ -53,7 +55,8 @@
       "baseline_metric": null,
       "customer_facing": false,
       "decision_type": "rule_based",
-      "risk_flags": ["handles_money"]
+      "risk_flags": ["handles_money"],
+      "data_notes": "835 electronic remittance files imported into Excel spreadsheets, requiring lots of manual cell formatting."
     },
     {
       "id": "compounding-meds",
@@ -68,7 +71,8 @@
       "baseline_metric": "zero error rate",
       "customer_facing": false,
       "decision_type": "judgment_heavy",
-      "risk_flags": ["safety_critical"]
+      "risk_flags": ["safety_critical"],
+      "data_notes": "Formulas stored in a physical paper binder, no digital backup."
     },
     {
       "id": "tax-preparation",
@@ -79,11 +83,12 @@
       "people_involved": {"count": 1, "roles": ["Owner"]},
       "current_tools": ["QuickBooks", "Shoebox", "Excel"],
       "pain_description": "The shoebox method is terrible. The thermal receipts fade so you cannot read the ink. It takes the owner days to do this and it is incredibly boring.",
-      "time_spent": {"hours_per_week": 2},
+      "time_spent": {"minutes_per_case": 1440},
       "baseline_metric": null,
       "customer_facing": false,
       "decision_type": "mixed",
-      "risk_flags": ["handles_money", "legally_binding"]
+      "risk_flags": ["handles_money", "legally_binding"],
+      "data_notes": "Shoebox full of faded paper receipts and one massive CSV export from QuickBooks."
     }
   ]
 }

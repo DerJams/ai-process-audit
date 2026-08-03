@@ -23,7 +23,8 @@
       "baseline_metric": "signing up about one in four people I visit",
       "customer_facing": true,
       "decision_type": "judgment_heavy",
-      "risk_flags": []
+      "risk_flags": [],
+      "data_notes": "Address on paper sticky notes, rough sketches on iPad, no central CRM or system of record."
     },
     {
       "id": "material-sourcing",
@@ -34,11 +35,12 @@
       "people_involved": {"count": 1, "roles": ["Owner"]},
       "current_tools": ["Phone", "Credit Card", "Notebook"],
       "pain_description": "Calling nurseries takes forever because they never answer the phone. Sometimes they promise a plant and then when my crew shows up, it is gone. It wastes my entire Thursday morning.",
-      "time_spent": {"hours_per_week": 15},
+      "time_spent": {"hours_per_week": 4},
       "baseline_metric": null,
       "customer_facing": false,
       "decision_type": "mixed",
-      "risk_flags": ["handles_money"]
+      "risk_flags": ["handles_money"],
+      "data_notes": "Credit card receipts and handwritten notebook pages."
     },
     {
       "id": "crew-scheduling",
@@ -50,7 +52,8 @@
       "current_tools": ["Whiteboard", "iMessage", "Google Calendar"],
       "pain_description": "If it rains on Tuesday, the whole schedule is ruined. I have to text everyone again. It is incredibly stressful to do on my Sunday evenings.",
       "time_spent": {"hours_per_week": 4},
-      "baseline_metric": null
+      "baseline_metric": null,
+      "data_notes": "iMessage threads and unstructured events manually dragged around in Google Calendar."
     },
     {
       "id": "month-end-invoicing",
@@ -65,7 +68,8 @@
       "baseline_metric": "getting paid within 14 days usually",
       "customer_facing": true,
       "decision_type": "rule_based",
-      "risk_flags": ["handles_money", "legally_binding"]
+      "risk_flags": ["handles_money", "legally_binding"],
+      "data_notes": "Structured invoice records in QuickBooks, but the source data is crumpled paper timesheets."
     },
     {
       "id": "warranty-replacements",
@@ -80,7 +84,8 @@
       "baseline_metric": "under five warranty claims a quarter",
       "customer_facing": true,
       "decision_type": "judgment_heavy",
-      "risk_flags": []
+      "risk_flags": [],
+      "data_notes": "Customer photos attached to emails and old paper job files stored in cabinets."
     }
   ]
 }

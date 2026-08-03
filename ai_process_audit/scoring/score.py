@@ -57,6 +57,66 @@ class ScoredCriterion:
 
 
 @dataclass(frozen=True)
+class Evaluation:
+    """The result of applying the rubric to one set of per criterion scores.
+
+    This is the whole of the rubric arithmetic: criterion caps, direction, weights,
+    banding, band caps. It is deliberately independent of where the scores came from,
+    so the engine and the evaluation harness can put the same numbers through the same
+    code. When the harness worked out a gold band with its own arithmetic it silently
+    skipped both caps, and the resulting band agreement compared two numbers computed
+    under different rules.
+    """
+
+    judge_scores: dict[str, int]
+    scores: dict[str, int]
+    criterion_caps: dict[str, AppliedCriterionCap]
+    weighted_score: float
+    band_before_caps: Band
+    band: Band
+    band_caps: tuple[AppliedCap, ...]
+
+
+def evaluate(judge_scores: dict[str, int], process: Process, rubric: Rubric) -> Evaluation:
+    """Apply the rubric to a set of scores, whoever produced them.
+
+    judge_scores are the scores as given, before any cap. Every criterion in the
+    rubric must be present.
+    """
+    capped: dict[str, int] = {}
+    caps: dict[str, AppliedCriterionCap] = {}
+    for criterion in rubric.criteria:
+        if criterion.id not in judge_scores:
+            raise KeyError(f"No score given for criterion {criterion.id!r}")
+        final_score, applied = _apply_criterion_caps(
+            criterion.id, criterion.label, int(judge_scores[criterion.id]), process, rubric
+        )
+        capped[criterion.id] = final_score
+        if applied is not None:
+            caps[criterion.id] = applied
+
+    weighted = round(
+        sum(
+            rubric.effective_score(criterion.id, capped[criterion.id]) * criterion.weight
+            for criterion in rubric.criteria
+        ),
+        4,
+    )
+    earned_band = rubric.band_for(weighted)
+    final_band, band_caps = rubric.apply_caps(earned_band, capped)
+
+    return Evaluation(
+        judge_scores={key: int(value) for key, value in judge_scores.items()},
+        scores=capped,
+        criterion_caps=caps,
+        weighted_score=weighted,
+        band_before_caps=earned_band,
+        band=final_band,
+        band_caps=band_caps,
+    )
+
+
+@dataclass(frozen=True)
 class Opportunity:
     """One process, scored and placed in a band."""
 
@@ -165,40 +225,41 @@ def score_process(
             f"but is being scored against rubric {rubric.version}. Rerun the judge."
         )
 
-    scored: list[ScoredCriterion] = []
-    for criterion in rubric.criteria:
-        result: CriterionScore = verdict.score_for(criterion.id)
-        final_score, applied = _apply_criterion_caps(
-            criterion.id, criterion.label, result.score, process, rubric
-        )
-        scored.append(
-            ScoredCriterion(
-                id=criterion.id,
-                label=criterion.label,
-                raw_score=final_score,
-                effective_score=rubric.effective_score(criterion.id, final_score),
-                weight=criterion.weight,
-                inverted=criterion.is_inverted,
-                rationale=result.rationale,
-                judge_score=result.score,
-                cap=applied,
-            )
-        )
-
-    weighted = round(sum(item.contribution for item in scored), 4)
-    earned_band = rubric.band_for(weighted)
-    final_band, applied_caps = rubric.apply_caps(
-        earned_band, {item.id: item.raw_score for item in scored}
+    results: dict[str, CriterionScore] = {
+        criterion.id: verdict.score_for(criterion.id) for criterion in rubric.criteria
+    }
+    evaluation = evaluate(
+        {criterion_id: result.score for criterion_id, result in results.items()},
+        process,
+        rubric,
     )
+
+    scored = tuple(
+        ScoredCriterion(
+            id=criterion.id,
+            label=criterion.label,
+            raw_score=evaluation.scores[criterion.id],
+            effective_score=rubric.effective_score(
+                criterion.id, evaluation.scores[criterion.id]
+            ),
+            weight=criterion.weight,
+            inverted=criterion.is_inverted,
+            rationale=results[criterion.id].rationale,
+            judge_score=evaluation.judge_scores[criterion.id],
+            cap=evaluation.criterion_caps.get(criterion.id),
+        )
+        for criterion in rubric.criteria
+    )
+
     return Opportunity(
         process=process,
         process_map=process_map,
         verdict=verdict,
-        criteria=tuple(scored),
-        weighted_score=weighted,
-        band=final_band,
-        band_before_caps=earned_band,
-        applied_caps=applied_caps,
+        criteria=scored,
+        weighted_score=evaluation.weighted_score,
+        band=evaluation.band,
+        band_before_caps=evaluation.band_before_caps,
+        applied_caps=evaluation.band_caps,
     )
 
 

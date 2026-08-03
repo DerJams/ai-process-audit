@@ -38,10 +38,15 @@ so check the path the command prints. Then, with rubric.md open beside you:
    rather than to score against the anchors.
 4. Score implementation risk as risk. Higher is riskier. The engine does the
    inversion, so do not invert it yourself.
-5. Where the intake does not say, score 3 and write why in the rationale. The rubric
+5. **Do not apply either cap.** Score the return band from the time figure even when
+   nothing is tracked, and score implementation risk without thinking about what may
+   be recommended. Both caps are the engine's job, your label is compared against the
+   score before any cap was applied, and applying one yourself would be counted as a
+   disagreement with the judge that never happened.
+6. Where the intake does not say, score 3 and write why in the rationale. The rubric
    asks the engine to do the same, so doing anything else here measures the wrong
    thing.
-6. Leave a score as null if you genuinely have not decided. Nulls are counted and
+7. Leave a score as null if you genuinely have not decided. Nulls are counted and
    reported, not silently treated as agreement.
 
 Each process has two blocks. `criteria` holds the scores, and `rationales` holds one

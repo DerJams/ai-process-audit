@@ -41,6 +41,36 @@ def gold_document(rubric_version: str, criteria: dict[str, int | None]) -> dict:
     }
 
 
+def intake_document(**overrides) -> dict:
+    """A one process intake, built here so cap tests do not depend on the real ones.
+
+    As given: 10 forms a week is 520 a year, and 4 hours a week over a 48 week year
+    is 192 hours, which is the return band 4 anchor. No baseline_metric, so the
+    engine caps the return band to 2.
+    """
+    process = {
+        "id": "a-process",
+        "name": "A process",
+        "description": (
+            "The administrator collects the forms, then types each one into Xero, "
+            "then emails the customer to confirm."
+        ),
+        "frequency": "weekly",
+        "volume": {"count": 10, "unit": "forms", "period": "per_week"},
+        "people_involved": {"count": 2, "roles": ["administrator"]},
+        "time_spent": {"hours_per_week": 4},
+        "current_tools": ["paper", "Xero"],
+        "pain_description": "It is slow and errors reach the customer.",
+    }
+    process.update(overrides)
+    return {
+        "schema_version": "1.2.0",
+        "intake_id": "temp-intake",
+        "business": {"industry": "Testing", "headcount": 4, "tools_in_use": ["Xero"]},
+        "processes": [process],
+    }
+
+
 class HarnessTestCase(unittest.TestCase):
     def setUp(self):
         self.rubric = load_rubric()
@@ -221,6 +251,141 @@ class TestAgreementMaths(HarnessTestCase):
                 "No labels have been written yet",
                 (out / "failure_analysis.md").read_text(encoding="utf-8"),
             )
+
+
+class TestCapHandling(unittest.TestCase):
+    """How caps are treated on each side of the comparison.
+
+    A labeller sits in the judge's seat. The rubric tells the judge to score each
+    criterion on its own terms and leaves both caps to the engine, so a label is
+    compared against the judge's score before any cap. A band is an engine level
+    output, so a gold band has both caps applied exactly as the engine applies them.
+    """
+
+    def setUp(self):
+        self.rubric = load_rubric()
+
+    def build(self, directory: str, criteria: dict[str, int | None], **process_overrides):
+        """Write a temp intake and a gold file against it, and return the gold path."""
+        intake_path = Path(directory) / "intake.json"
+        intake_path.write_text(
+            json.dumps(intake_document(**process_overrides)), encoding="utf-8"
+        )
+        gold_path = Path(directory) / "temp.gold.json"
+        gold_path.write_text(
+            json.dumps(
+                {
+                    "gold_format": "2",
+                    "intake_file": "intake.json",
+                    "rubric_version": self.rubric.version,
+                    "labelled_by": "A Person",
+                    "labelled_on": "2026-08-03",
+                    "processes": {
+                        "a-process": {
+                            "process_name": "A process",
+                            "notes": "",
+                            "criteria": dict(criteria),
+                            "rationales": {},
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        return intake_path, gold_path
+
+    def test_no_baseline_return_band_agrees_on_the_pre_cap_score(self):
+        # The engine caps this process's return band from 4 to 2 because nothing is
+        # tracked. A labeller who scored the time figure and wrote 4 agrees with the
+        # judge and must be recorded as agreeing, not as two points out.
+        labels = {criterion.id: None for criterion in self.rubric.criteria}
+        labels["return_band"] = 4
+
+        with tempfile.TemporaryDirectory() as directory:
+            intake_path, gold_path = self.build(directory, labels)
+
+            # Confirm the fixture actually trips the cap, so this cannot pass by the
+            # cap never firing in the first place.
+            from ai_process_audit.pipeline import audit_file
+
+            opportunity = audit_file(intake_path).opportunities[0]
+            return_band = opportunity.criterion("return_band")
+            self.assertEqual(return_band.judge_score, 4)
+            self.assertEqual(return_band.raw_score, 2)
+            self.assertTrue(return_band.was_capped)
+
+            report = run([gold_path], self.rubric, Path(directory) / "out")
+            self.assertEqual(report["overall"]["labels_compared"], 1)
+            self.assertEqual(report["overall"]["disagreements"], 0)
+            self.assertEqual(report["overall"]["exact_agreement"], 1.0)
+
+    def test_a_label_matching_the_capped_score_is_a_disagreement(self):
+        # The other side of the same rule. Labelling 2 here matches what the engine
+        # reports but not what the judge said, so it must count as a disagreement.
+        labels = {criterion.id: None for criterion in self.rubric.criteria}
+        labels["return_band"] = 2
+
+        with tempfile.TemporaryDirectory() as directory:
+            _, gold_path = self.build(directory, labels)
+            report = run([gold_path], self.rubric, Path(directory) / "out")
+            self.assertEqual(report["overall"]["disagreements"], 1)
+            analysis = (
+                Path(directory) / "out" / "failure_analysis.md"
+            ).read_text(encoding="utf-8")
+            self.assertIn("Engine: **4**", analysis)
+
+    def test_gold_band_applies_the_return_band_criterion_cap(self):
+        # Labels that earn 4.15 uncapped, which is Strong candidate. The return band
+        # label of 5 is capped to 2 because nothing is tracked, taking the gold score
+        # to 3.70 and the gold band to Worth a pilot.
+        labels = {
+            "pain": 4,
+            "frequency": 4,
+            "volume": 4,
+            "data_availability": 4,
+            "implementation_risk": 2,
+            "return_band": 5,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            _, gold_path = self.build(directory, labels)
+            report = run([gold_path], self.rubric, Path(directory) / "out")
+            row = report["intakes"][0]["processes"][0]
+            self.assertAlmostEqual(row["gold_score"], 3.70, places=4)
+            self.assertEqual(row["gold_band"], "Worth a pilot")
+
+    def test_gold_band_applies_the_implementation_risk_band_cap(self):
+        # Top marks everywhere with risk at 5. The weighted score stays as calculated
+        # and the band is held at Worth a pilot, which is what a band cap does.
+        labels = {criterion.id: 5 for criterion in self.rubric.criteria}
+        with tempfile.TemporaryDirectory() as directory:
+            _, gold_path = self.build(
+                directory,
+                labels,
+                baseline_metric="forms turned round same day, currently about half",
+            )
+            report = run([gold_path], self.rubric, Path(directory) / "out")
+            row = report["intakes"][0]["processes"][0]
+            self.assertAlmostEqual(row["gold_score"], 4.40, places=4)
+            self.assertEqual(row["gold_band"], "Worth a pilot")
+
+    def test_gold_and_engine_bands_come_from_one_implementation(self):
+        # Label with exactly what the judge said. Both sides then run the same scores
+        # through the same evaluate(), so score and band must match exactly.
+        from ai_process_audit.pipeline import audit_file
+
+        with tempfile.TemporaryDirectory() as directory:
+            intake_path = Path(directory) / "intake.json"
+            intake_path.write_text(json.dumps(intake_document()), encoding="utf-8")
+            opportunity = audit_file(intake_path).opportunities[0]
+            labels = {item.id: item.judge_score for item in opportunity.criteria}
+
+            _, gold_path = self.build(directory, labels)
+            report = run([gold_path], self.rubric, Path(directory) / "out")
+            row = report["intakes"][0]["processes"][0]
+            self.assertEqual(row["gold_score"], row["engine_score"])
+            self.assertEqual(row["gold_band"], row["engine_band"])
+            self.assertEqual(report["overall"]["band_agreement"], 1.0)
+            self.assertEqual(report["overall"]["exact_agreement"], 1.0)
 
 
 class TestTemplateGenerator(unittest.TestCase):

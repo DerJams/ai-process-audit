@@ -34,10 +34,11 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ai_process_audit.intake.validator import load_intake
+from ai_process_audit.model.models import Process
 from ai_process_audit.model.normalize import normalize_intake
 from ai_process_audit.scoring.judge import get_judge
 from ai_process_audit.scoring.rubric import Rubric, load_rubric
-from ai_process_audit.scoring.score import Opportunity, score_intake
+from ai_process_audit.scoring.score import Evaluation, Opportunity, evaluate, score_intake
 
 EVAL_DIR = Path(__file__).resolve().parent
 GOLD_DIR = EVAL_DIR / "gold"
@@ -182,22 +183,28 @@ def _check_gold_shape(gold: dict[str, Any], path: Path, rubric: Rubric) -> None:
             )
 
 
-def _gold_weighted_score(
-    criteria: dict[str, Any], rubric: Rubric
-) -> float | None:
+def _gold_evaluation(
+    criteria: dict[str, Any], process: Process, rubric: Rubric
+) -> Evaluation | None:
     """Work out what the rubric would say if the labels were the scores.
 
     This is arithmetic over labels a person wrote. It does not create labels. It
     returns None unless every criterion has been labelled, because a partial set
     would produce a band that looks authoritative and is not.
+
+    It runs the labels through the same evaluate() the engine uses, so the gold band
+    and the engine band are produced by one implementation. Doing this by hand here
+    is how the two drifted apart: the hand rolled version applied direction but
+    neither cap, so band agreement compared a capped engine band against an uncapped
+    gold one.
     """
-    total = 0.0
+    scores: dict[str, int] = {}
     for criterion in rubric.criteria:
         value = criteria.get(criterion.id)
         if value is None:
             return None
-        total += rubric.effective_score(criterion.id, float(value)) * criterion.weight
-    return round(total, 4)
+        scores[criterion.id] = int(value)
+    return evaluate(scores, process, rubric)
 
 
 def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristic") -> IntakeComparison:
@@ -241,7 +248,15 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
                 continue
             labelled_any = True
             engine = opportunity.criterion(criterion.id)
-            if engine.raw_score != int(gold_value):
+            # Compared against the score the judge gave, before any criterion cap.
+            # A labeller sits in the judge's seat and the rubric tells the judge to
+            # score the criterion on its own terms, leaving caps to the engine. So
+            # comparing a label against the capped number would record disagreements
+            # that are an artefact of the cap rather than a difference of judgement.
+            engine_score = (
+                engine.judge_score if engine.judge_score is not None else engine.raw_score
+            )
+            if engine_score != int(gold_value):
                 comparison.disagreements.append(
                     Disagreement(
                         intake_id=intake.intake_id,
@@ -250,7 +265,7 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
                         criterion_id=criterion.id,
                         criterion_label=criterion.label,
                         gold_score=int(gold_value),
-                        engine_score=engine.raw_score,
+                        engine_score=engine_score,
                         engine_rationale=engine.rationale,
                         # The reasoning written for this specific criterion, falling
                         # back to the process level note when none was written.
@@ -265,12 +280,11 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
         if labelled_any:
             comparison.labelled_processes += 1
 
-        gold_weighted = _gold_weighted_score(labelled_criteria, rubric)
-        if gold_weighted is not None:
-            gold_scores[process_id] = gold_weighted
+        gold = _gold_evaluation(labelled_criteria, opportunity.process, rubric)
+        if gold is not None:
+            gold_scores[process_id] = gold.weighted_score
             comparison.band_compared += 1
-            gold_band = rubric.band_for(gold_weighted)
-            if gold_band.id == opportunity.band.id:
+            if gold.band.id == opportunity.band.id:
                 comparison.band_matches += 1
 
         comparison.process_rows.append(
@@ -279,8 +293,8 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
                 "process_name": opportunity.process.name,
                 "engine_score": opportunity.weighted_score,
                 "engine_band": opportunity.band.label,
-                "gold_score": gold_weighted,
-                "gold_band": rubric.band_for(gold_weighted).label if gold_weighted is not None else None,
+                "gold_score": gold.weighted_score if gold is not None else None,
+                "gold_band": gold.band.label if gold is not None else None,
                 "engine_rank": opportunity.rank,
             }
         )

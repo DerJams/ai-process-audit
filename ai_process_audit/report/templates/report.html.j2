@@ -178,6 +178,20 @@
 </p>
 {% endif %}
 
+{% if disqualified %}
+<h2>Outside software automation</h2>
+{% for item in disqualified %}
+<div class="detail">
+  <h3>{{ item.process.name }}</h3>
+  <p>{{ item.disqualification.reason }}</p>
+  <p class="pmeta">From the description: {{ item.evidence }}</p>
+  <p><strong>{{ item.disqualification.referral }}</strong></p>
+</div>
+{% endfor %}
+<p class="pmeta">These did not go into the ranking above. Scoring them against processes
+  software can perform would produce a number that answers a question you did not ask.</p>
+{% endif %}
+
 {% if planned_changes %}
 <h2>System changes already planned</h2>
 <table>

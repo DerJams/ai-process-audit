@@ -114,12 +114,12 @@ way, where a higher score is a better candidate. Implementation risk points the 
 way. The judge always scores a criterion in its natural direction, so risk is scored
 as risk, and `scoring/rubric.py` inverts it during aggregation. This removes a whole
 class of labelling error, since a human labeller and a model judge would both
-otherwise have to remember to flip one criterion out of six.
+otherwise have to remember to flip one criterion out of seven.
 
-**Two rules sit outside the weighted average.** A weighted average lets five good
+**Three rules sit outside the weighted average.** A weighted average lets several good
 criteria outvote one bad one, which is right for a score and wrong for a
-recommendation. So the rubric has two kinds of cap, both applied by the engine and
-both reported.
+recommendation. So the rubric has three mechanisms, all applied by the engine and all
+reported, acting at three different points.
 
 A **band cap** limits the recommendation after the weighting, and never changes the
 score. A process scoring 5 on implementation risk cannot be recommended above Worth a
@@ -137,9 +137,20 @@ not a strong return, it is an unproven one, and the honest recommendation is to 
 counting first. The report states that no baseline exists so the return cannot be
 evidenced, and shows the score the cap overrode.
 
-Both caps are declared as data in the `rubric-spec` block rather than written into
-the scorer, and a criterion cap may only use a condition the engine knows how to
-check, so a typo fails when the rubric loads instead of silently never firing.
+A **disqualification** removes the process from the ranking entirely. One exists: a
+process scoring 1 on software automatability, meaning almost none of its steps can be
+done by software. It gets no weighted score and no band, because a low score still
+invites comparison, and comparing a process software cannot perform against ones it can
+is the comparison itself being wrong. The report lists it separately, says so in plain
+language, quotes one sentence from the description, and points the reader at a robotics
+automation specialist. That referral is there because the alternative is silence, and
+silence reads as a verdict on the business rather than on the boundary of what this
+audit covers.
+
+All three are declared as data in the `rubric-spec` block rather than written into the
+scorer. A criterion cap may only use a condition the engine knows how to check, and a
+disqualification without a referral fails to load, so a mechanism that would remove a
+process without telling anyone where to go next cannot ship.
 
 ## Intake fields
 
@@ -222,7 +233,7 @@ path produces a different decomposition each time. Every disagreement then has t
 possible causes and no way to tell them apart.
 
 **Most of the work is not judgement.** Validating a schema, converting weekly volume
-into yearly volume, applying six weights, sorting a list. A model doing arithmetic is
+into yearly volume, applying seven weights, sorting a list. A model doing arithmetic is
 slower, more expensive, and occasionally wrong, and there is no upside because the
 correct answer is defined. Handing these to a model does not make the system smarter,
 it makes the failures harder to locate.
@@ -258,7 +269,7 @@ project exists to avoid, so the validation harness is not an afterthought.
 The method:
 
 1. A person writes gold labels by hand for every process in the synthetic intakes,
-   scoring all six criteria against the anchors in `rubric.md`, without looking at
+   scoring all seven criteria against the anchors in `rubric.md`, without looking at
    engine output first.
 2. `eval/harness.py` runs the engine over the same intakes and compares.
 3. It reports exact agreement, agreement within one point, the mean signed error per

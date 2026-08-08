@@ -144,6 +144,35 @@
       "owner": "Trevor Mensah"
     },
     {
+      "id": "sign-installation",
+      "name": "Installing storefront signs on site",
+      "description": "Two installers load the finished sign, the brackets, and the lift onto the truck. They drive to the customer site. They meet the store manager, walk the frontage, and check the fixing points against the survey. Then they carry the sign up the lift and bolt it to the wall by hand. Finally they clear the site and hand the customer a completion sheet to sign.",
+      "frequency": "several_times_per_week",
+      "volume": {
+        "count": 6,
+        "unit": "installs",
+        "period": "per_week",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 2,
+        "roles": ["installer", "customer"],
+        "hours_per_run": 7
+      },
+      "time_spent": {
+        "hours_per_week": 42
+      },
+      "current_tools": ["truck", "lift", "hand tools", "paper completion sheet"],
+      "pain_description": "Two installs went wrong this year because the fixing points on site did not match the survey, which meant a second visit and an unhappy customer both times. The crew waits around when the store is not ready for them, and nobody at the office knows how a job is going until they are back.",
+      "decision_type": "judgment_heavy",
+      "exception_rate": "occasional",
+      "baseline_metric": "installs completed per crew per week, counted off the job tickets, usually six",
+      "customer_facing": true,
+      "risk_flags": ["safety_critical"],
+      "data_notes": "Nothing about the install is recorded until the crew is back. The survey is a PDF on the shared drive and the completion sheet is paper.",
+      "owner": "Trevor Mensah"
+    },
+    {
       "id": "install-paperwork",
       "name": "Closing out installation paperwork",
       "description": "After a storefront or vehicle install the installer photographs the finished work on his phone, gets the customer to sign a paper completion sheet, and brings both back to the office at the end of the week. The office administrator types the completion into the production spreadsheet, saves the photos to the shared drive under the job number when she can work out which job they belong to, and passes the signed sheet to accounting so the job can be invoiced.",

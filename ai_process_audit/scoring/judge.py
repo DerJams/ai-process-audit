@@ -230,6 +230,26 @@ _RISK_BY_EXCEPTION_RATE: dict[str, int] = {
     "frequent": 1,
 }
 
+# Steps software cannot perform: physical handling, or a person having to be present.
+# Deliberately not a list of hardware words. The rubric is explicit that needing a
+# camera or a sensor to feed software is a complexity question, not a fit question, so
+# scanning and photographing are absent from this list on purpose.
+_PHYSICAL_MARKERS: tuple[str, ...] = (
+    "walk", "walks", "walked",
+    # Verb phrases, not the bare verb. "drive" alone matched "shared drive" and read a
+    # step that was entirely typing and saving as physical work. A word that is also a
+    # common noun in a tool name has to be matched in its verb sense or not at all.
+    "drive to", "drives to", "driving to", "drove to", "drives it to",
+    "install", "installs", "installing", "fitting",
+    "deliver", "delivers", "delivering", "collect", "collects", "collecting",
+    "pick up", "picks up", "picked up", "drop off", "drops off",
+    "load", "loads", "loading", "unload", "unloads", "stack", "stacks",
+    "hand", "hands", "handed", "carry", "carries", "in person", "on site",
+    "visit", "visits", "meet", "meets", "meeting", "counter", "shelf",
+    "racking", "shop floor", "press floor", "wrap", "wraps",
+    "signature", "wet signature", "sign off on site", "shake",
+)
+
 _EXCEPTION_PROSE: dict[str, str] = {
     "rare": "almost every case follows the same path",
     "occasional": "a couple of cases in ten need handling differently",
@@ -290,6 +310,7 @@ class StubJudge:
             "data_availability": self._data_availability,
             "implementation_risk": self._implementation_risk,
             "return_band": self._return_band,
+            "software_automatability": self._software_automatability,
         }
 
         scores: dict[str, CriterionScore] = {}
@@ -495,6 +516,44 @@ class StubJudge:
         )
         tail = f" Scored conservatively because {'; '.join(notes)}." if notes else ""
         return score, f"{detail}.{tail}"
+
+    def _software_automatability(
+        self, process: Process, process_map: ProcessMap
+    ) -> tuple[int, str]:
+        # Share of steps, not share of time. How long a step takes is the return band
+        # criterion's problem, and mixing the two would hide a process where one slow
+        # step is physical and nine quick ones are not.
+        steps = process_map.steps
+        physical = [
+            step
+            for step in steps
+            if any(_mentions(step.text, marker) for marker in _PHYSICAL_MARKERS)
+        ]
+        share = len(physical) / len(steps) if steps else 0.0
+
+        if share <= 0.05:
+            score = 5
+        elif share <= 0.30:
+            score = 4
+        elif share <= 0.60:
+            score = 3
+        elif share <= 0.85:
+            score = 2
+        else:
+            score = 1
+
+        total = _plural(len(steps), "step")
+        if not physical:
+            return score, (
+                f"All {total} read as work software could do, with nothing in the "
+                "description that needs physical handling or a person present."
+            )
+        verb = "involves" if len(physical) == 1 else "involve"
+        rest = "the rest read" if len(steps) - len(physical) != 1 else "the other reads"
+        return score, (
+            f"Of the {total} inferred, {len(physical)} {verb} physical handling or "
+            f"someone being present, and {rest} as work software could do."
+        )
 
     def _return_band(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
         # Scored from time spent alone. The baseline metric cap is applied by the

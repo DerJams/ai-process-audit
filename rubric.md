@@ -1,6 +1,6 @@
 # Automation Opportunity Rubric
 
-**Version: 1.3.0-draft**
+**Version: 1.4.0-draft**
 **Status: DRAFT. Not approved. Weights and criteria are proposals awaiting review.**
 
 This file is the single source of truth for scoring. The engine reads the machine
@@ -9,12 +9,15 @@ the matching entry in that block, and raise the version number.
 
 ## How scoring works
 
-Every process in an intake is scored against six criteria. Each criterion gets an
+Every process in an intake is scored against seven criteria. Each criterion gets an
 integer score from 1 to 5 and a one sentence rationale. Scores are combined into a
 single number from 1.0 to 5.0 using the weights below, and that number maps to a
 recommendation band.
 
-Five of the six criteria point the same way: a higher score means a better
+One criterion can remove a process from the ranking altogether rather than score it
+down. See Disqualification below.
+
+Six of the seven criteria point the same way: a higher score means a better
 automation candidate. One criterion, implementation risk, points the other way. A
 score of 5 on implementation risk means the work is risky, so the engine inverts it
 before combining. The inversion is applied in code, not by the person or model doing
@@ -32,7 +35,7 @@ Two rules keep the scores comparable across businesses:
 
 ## Criteria
 
-### 1. Pain (weight 0.20)
+### 1. Pain (weight 0.16)
 
 How much trouble the process causes the people who run it today. Look at the pain
 description, not just the process description.
@@ -45,7 +48,7 @@ description, not just the process description.
 | 4 | A regular source of stress or errors that reach customers or the books. |
 | 5 | A named problem that the business is actively losing money, staff, or customers over. |
 
-### 2. Frequency (weight 0.15)
+### 2. Frequency (weight 0.12)
 
 How often the process runs. Taken from the frequency field and normalised to runs
 per year. Frequency is scored separately from volume because a process that runs
@@ -60,7 +63,7 @@ runs fifty times a day over one record.
 | 4 | Runs weekly or several times a week. |
 | 5 | Runs daily or continuously through the working day. |
 
-### 3. Volume (weight 0.15)
+### 3. Volume (weight 0.12)
 
 How many items pass through the process in a year. An item is whatever the process
 handles: an invoice, a booking, an application, a support message.
@@ -73,7 +76,7 @@ handles: an invoice, a booking, an application, a support message.
 | 4 | 1,000 to 10,000 items a year. |
 | 5 | Over 10,000 items a year. |
 
-### 4. Data availability (weight 0.20)
+### 4. Data availability (weight 0.16)
 
 Whether the information the process needs already exists somewhere a computer can
 read it. This is the criterion that most often kills an otherwise good candidate.
@@ -86,7 +89,7 @@ read it. This is the criterion that most often kills an otherwise good candidate
 | 4 | Held in a real system with structured fields, though export or access needs manual steps. |
 | 5 | Held in a system with structured fields and a documented way to read it programmatically. |
 
-### 5. Implementation risk (weight 0.15, inverted)
+### 5. Implementation risk (weight 0.12, inverted)
 
 What could go wrong if the automation is wrong, and how hard it is to catch. Higher
 means riskier. Score the risk, not the desirability. The engine inverts this.
@@ -140,7 +143,7 @@ and say in the rationale which ones were not reported. The defaults are:
 Never score 1 on a process where all three are missing, because a 1 is a claim that
 nothing can go wrong, and that claim needs evidence rather than silence.
 
-### 6. Return band (weight 0.15)
+### 6. Return band (weight 0.12)
 
 The size of the return relative to the effort. This is a band, not a forecast. It is
 deliberately coarse because a precise number here would be false precision.
@@ -175,6 +178,35 @@ The cap is not a judgement about the process. It is a judgement about what can b
 claimed on the evidence available, which is the same standard the rest of this rubric
 applies.
 
+### 7. Software automatability (weight 0.20)
+
+How much of this process could be done by software?
+
+**Scored on the share of steps, not the share of time.** How long each step takes is an
+ROI question and is handled by the return band criterion. This one asks a narrower and
+more basic question: can the steps be done by software at all. A process where one
+slow step is physical and nine fast steps are software work is mostly automatable, and
+scoring it on time would hide that.
+
+| Score | Anchor |
+| --- | --- |
+| 1 | Almost none of the steps can be done by software. The work is physical, in person, or otherwise outside what software can touch. |
+| 2 | About a quarter of the steps could be software. The rest is physical or human work that software cannot replace. |
+| 3 | About half the steps could be software, and half could not. |
+| 4 | Most steps could be software. A minority is physical or requires a person present. |
+| 5 | Effectively all steps could be done by software. Nothing in the process requires physical handling or a person present. |
+
+**A step counts as software automatable if software could do the work, even where a
+sensor or camera would be needed to feed it.** Reading a gauge, scanning a label, or
+photographing a finished job are inputs a machine can supply. Needing that hardware
+makes the build more complex, and complexity is not what this criterion measures.
+Hardware enablement is a complexity question, not a fit question, and does not reduce
+this score.
+
+The distinction that does matter here is whether a person has to be physically present
+or physically handle something. Driving to a site, fitting a part, or shaking a hand
+are not made automatable by adding a camera.
+
 ## Recommendation bands
 
 The weighted score maps to one of four bands. The band is what goes at the top of
@@ -188,19 +220,54 @@ call it was.
 | Watch list | 2.00 to 2.99 | Not now. Revisit if volume grows or the data improves. |
 | Not a fit | Below 2.00 | Automation is not the answer to this one. |
 
-## Two kinds of cap
+## Three mechanisms that sit outside the weighted average
 
-There are two caps in this rubric and they do different jobs.
+A weighted average is the right tool for combining scores that trade off against each
+other. It is the wrong tool for a fact that should override the trade off. This rubric
+has three mechanisms for that, and they act at three different points. Keeping them
+distinct matters, because each one answers a different question.
 
-A **criterion cap** limits one score, before the weighting. The return band cap
-described above is one: no baseline metric means the return criterion cannot go
-above 2. It changes the weighted score, because it changes an input to it.
+| Mechanism | Acts on | Changes the score? | Question it answers |
+| --- | --- | --- | --- |
+| Criterion cap | One criterion, before weighting | Yes, it changes an input | What may honestly be claimed on this criterion? |
+| Band cap | The recommendation, after weighting | No | What may be recommended on the strength of this score? |
+| Disqualification | The whole process, instead of scoring it | There is no score | Does this belong in the ranking at all? |
 
-A **band cap** limits the recommendation, after the weighting. The implementation
-risk cap below is one. It never changes the score, only what may be recommended on
-the strength of it.
+**A criterion cap** limits one score before the weighting. The return band cap is one:
+no baseline metric means the return criterion cannot go above 2. It changes the
+weighted score, because it changes an input to it.
 
-Both are applied by the engine rather than by the judge, and both are reported.
+**A band cap** limits the recommendation after the weighting. The implementation risk
+cap is one. It never changes the score, only what may be recommended on the strength
+of it, and the score it overrode is printed next to the capped band.
+
+**A disqualification** removes the process from the ranking. It does not produce a low
+score, because a low score still invites comparison, and comparing a process that
+software cannot touch against ones it can is the comparison itself being wrong. There
+is no weighted score and no band, and the process is reported separately.
+
+All three are applied by the engine rather than by the judge, and all three are
+reported in plain language rather than left to be inferred from a number.
+
+## Disqualification
+
+**A process scoring 1 on software automatability is removed from the ranking.**
+
+At that anchor almost none of the steps can be done by software. Ranking it anyway
+would produce a number, and the number would be answering a question the business did
+not ask. A weighted score for a process software cannot perform is not a small score,
+it is a category error, and the honest output is to say so and point somewhere useful.
+
+The report lists these processes separately, states plainly that no part of the
+process can be automated with software, gives one sentence of reasoning drawn from the
+process description, and adds this line:
+
+> This process would benefit from collaboration with a robotics automation specialist
+> local to your area.
+
+That referral is there because the alternative is silence, and silence reads as a
+verdict on the business rather than on the boundary of what this audit covers. A
+process being outside software is not a failing of the process.
 
 ## Band caps
 
@@ -238,6 +305,14 @@ number feels low. If a weight is wrong, the failure analysis will show it as a
 criterion that consistently disagrees with the labels in one direction, and that is
 what a change has to cite.
 
+**The 1.4.0-draft rescale was mechanical and reopened none of this.** Adding software
+automatability at 0.20 required the other six to sum to 0.80, so all six were
+multiplied by 0.8: 0.20 became 0.16 and 0.15 became 0.12. Every relative relationship
+between the original six is unchanged. Pain and data availability are still level and
+still the heaviest of the six, and frequency, volume, implementation risk, and return
+band are still level with each other and still lighter. No settled question was
+reopened, and none of the four decisions below was revisited.
+
 1. **Pain and data availability stay level at 0.20 each.** The case for lifting data
    availability is real, but it rests on a claim about which criterion best predicts
    a successful build, and nothing here has measured that yet. Leave them level and
@@ -264,6 +339,7 @@ what a change has to cite.
 | 1.2.0-draft | 2026-08-02 | Return band anchors now read time spent and baseline metric, with a criterion cap at 2 where nothing is tracked. Implementation risk anchors now read decision type and customer facing, with stated conservative defaults when either is absent. Weights unchanged. Risk band cap unchanged. Still not approved. |
 | 1.2.1-draft | 2026-08-02 | Customer reach is now read only from the customer_facing field. It was also a risk_flags value, so implementation risk could count the same fact twice. No weights, anchors, or caps changed. Still not approved. |
 | 1.3.0-draft | 2026-08-08 | Implementation risk anchors now read exception_rate as well, so the criterion reads three optional fields. Exception rate is treated as first class in established process selection practice because a long tail of variation is what breaks an automation after launch. Absent is read as occasional and said in the rationale. No new criterion, no weight change, both caps unchanged. Still not approved. |
+| 1.4.0-draft | 2026-08-08 | Added software automatability at 0.20, scored on share of steps rather than share of time. The six existing weights were multiplied by 0.8 so the total stays at 1.00, which is a mechanical rescale that preserves every relative relationship and reopened no settled question. Added disqualification as a third mechanism alongside the two caps: a process scoring 1 on the new criterion leaves the ranking entirely and is reported separately with a robotics referral. Both existing caps unchanged. Still not approved. |
 
 ## Machine readable specification
 
@@ -271,51 +347,58 @@ The engine parses the block below. Nothing else in this file is read by code.
 
 ```rubric-spec
 {
-  "version": "1.3.0-draft",
+  "version": "1.4.0-draft",
   "approved": false,
   "scale": {"min": 1, "max": 5},
   "criteria": [
     {
       "id": "pain",
       "label": "Pain",
-      "weight": 0.20,
+      "weight": 0.16,
       "direction": "higher_is_better",
       "question": "How much trouble does this process cause the people who run it today?"
     },
     {
       "id": "frequency",
       "label": "Frequency",
-      "weight": 0.15,
+      "weight": 0.12,
       "direction": "higher_is_better",
       "question": "How often does this process run?"
     },
     {
       "id": "volume",
       "label": "Volume",
-      "weight": 0.15,
+      "weight": 0.12,
       "direction": "higher_is_better",
       "question": "How many items pass through this process in a year?"
     },
     {
       "id": "data_availability",
       "label": "Data availability",
-      "weight": 0.20,
+      "weight": 0.16,
       "direction": "higher_is_better",
       "question": "Does the information this process needs already exist somewhere a computer can read?"
     },
     {
       "id": "implementation_risk",
       "label": "Implementation risk",
-      "weight": 0.15,
+      "weight": 0.12,
       "direction": "higher_is_worse",
       "question": "What could go wrong if the automation is wrong, and how hard would it be to catch?"
     },
     {
       "id": "return_band",
       "label": "Return band",
-      "weight": 0.15,
+      "weight": 0.12,
       "direction": "higher_is_better",
       "question": "How large is the likely return relative to the effort of building it?"
+    },
+    {
+      "id": "software_automatability",
+      "label": "Software automatability",
+      "weight": 0.20,
+      "direction": "higher_is_better",
+      "question": "How much of this process could be done by software?"
     }
   ],
   "bands": [
@@ -338,6 +421,14 @@ The engine parses the block below. Nothing else in this file is read by code.
       "condition": "no_baseline_metric",
       "max_score": 2,
       "reason": "The business tracks no number for this process today, so any saving could be claimed but not shown. The first piece of work here is to start counting."
+    }
+  ],
+  "disqualifications": [
+    {
+      "criterion": "software_automatability",
+      "at_or_below": 1,
+      "reason": "No part of this process can be automated with software. The work is physical, in person, or otherwise outside what software can touch.",
+      "referral": "This process would benefit from collaboration with a robotics automation specialist local to your area."
     }
   ]
 }

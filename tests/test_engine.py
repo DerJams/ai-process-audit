@@ -103,6 +103,12 @@ def high_scoring_risky_intake() -> dict:
     process["volume"] = {"count": 500, "unit": "forms", "period": "per_day"}
     process["people_involved"]["hours_per_run"] = 8
     process["time_spent"] = {"hours_per_week": 12}
+    # Nothing physical, so software automatability is high and the band cap is what
+    # holds this back rather than the new criterion.
+    process["description"] = (
+        "The administrator opens the queue, then types each record into Xero, "
+        "then emails the customer to confirm."
+    )
     process["pain_description"] = (
         "Errors reach customers, staff work overtime and weekends, two people quit, "
         "and the business lost money on refunds and a penalty."
@@ -509,9 +515,64 @@ class TestRubric(unittest.TestCase):
         self.rubric = load_rubric()
 
     def test_rubric_loads_from_markdown(self):
-        self.assertEqual(len(self.rubric.criteria), 6)
+        self.assertEqual(len(self.rubric.criteria), 7)
         self.assertEqual(self.rubric.scale_min, 1)
         self.assertEqual(self.rubric.scale_max, 5)
+
+    def test_the_rescale_preserved_every_relative_relationship(self):
+        # 1.4.0 multiplied the original six by 0.8 to make room for the new criterion.
+        # The point of a mechanical rescale is that no relationship moves.
+        weights = {c.id: c.weight for c in self.rubric.criteria}
+        self.assertAlmostEqual(weights["software_automatability"], 0.20, places=6)
+        for heavier in ("pain", "data_availability"):
+            self.assertAlmostEqual(weights[heavier], 0.16, places=6)
+        for lighter in ("frequency", "volume", "implementation_risk", "return_band"):
+            self.assertAlmostEqual(weights[lighter], 0.12, places=6)
+        # Pain and data availability level with each other, and heavier than the four.
+        self.assertEqual(weights["pain"], weights["data_availability"])
+        self.assertGreater(weights["pain"], weights["frequency"])
+        # The original six still sum to 0.80 between them.
+        original = [c for c in self.rubric.criteria if c.id != "software_automatability"]
+        self.assertAlmostEqual(sum(c.weight for c in original), 0.80, places=6)
+
+    def test_software_automatability_is_defined_and_points_the_right_way(self):
+        criterion = self.rubric.criterion("software_automatability")
+        self.assertEqual(criterion.direction, "higher_is_better")
+        self.assertFalse(criterion.is_inverted)
+        self.assertIn("software", criterion.question.lower())
+
+    def test_the_disqualification_is_defined(self):
+        self.assertTrue(self.rubric.disqualifications)
+        rule = self.rubric.disqualifications[0]
+        self.assertEqual(rule.criterion, "software_automatability")
+        self.assertEqual(rule.at_or_below, 1)
+        self.assertEqual(
+            rule.referral,
+            "This process would benefit from collaboration with a robotics "
+            "automation specialist local to your area.",
+        )
+
+    def test_disqualification_without_a_referral_is_rejected(self):
+        text = (REPO_ROOT / "rubric.md").read_text(encoding="utf-8")
+        broken = text.replace(
+            '"referral": "This process would benefit', '"not_a_referral": "This process would benefit'
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "rubric.md"
+            path.write_text(broken, encoding="utf-8")
+            with self.assertRaises(RubricError) as caught:
+                load_rubric(path)
+            self.assertIn("referral", str(caught.exception))
+
+    def test_disqualification_fires_only_at_the_stated_score(self):
+        self.assertIsNotNone(
+            self.rubric.disqualification_for({"software_automatability": 1})
+        )
+        for score in (2, 3, 4, 5):
+            with self.subTest(score=score):
+                self.assertIsNone(
+                    self.rubric.disqualification_for({"software_automatability": score})
+                )
 
     def test_weights_sum_to_one(self):
         self.assertAlmostEqual(sum(c.weight for c in self.rubric.criteria), 1.0, places=6)
@@ -794,6 +855,25 @@ class TestJudge(unittest.TestCase):
             results[name] = verdict.scores["implementation_risk"].score
         self.assertGreater(results["absent"], results["rule_based"])
 
+    def test_a_tool_name_is_not_mistaken_for_physical_work(self):
+        # "shared drive" matched the verb drive, and a step that was entirely typing
+        # and saving read as physical work. Whole word matching does not help when the
+        # word is genuinely the same word in a different sense.
+        document = minimal_intake()
+        document["processes"][0]["description"] = (
+            "The administrator types the completion into the spreadsheet, "
+            "then saves the photos to the shared drive under the job number."
+        )
+        document["processes"][0]["current_tools"] = ["Excel", "shared drive"]
+        intake = normalize_intake(validate_intake(document))
+        process = intake.processes[0]
+        verdict = StubJudge().judge(
+            process, build_process_map(process, intake.business), self.rubric
+        )
+        score = verdict.scores["software_automatability"]
+        self.assertGreaterEqual(score.score, 4)
+        self.assertIn("nothing in the description", score.rationale)
+
     def test_keywords_match_whole_words_only(self):
         # Reapit contains the letters api. Substring matching read that as evidence
         # of a programmatic interface and scored data availability at the top.
@@ -836,6 +916,103 @@ class TestJudge(unittest.TestCase):
     def test_unknown_mode_is_rejected(self):
         with self.assertRaises(ValueError):
             get_judge("magic")
+
+
+def physical_intake() -> dict:
+    """A process made almost entirely of physical steps, so it disqualifies."""
+    document = minimal_intake()
+    process = document["processes"][0]
+    process["id"] = "yard-work"
+    process["name"] = "Loading customer orders onto the trucks"
+    process["description"] = (
+        "The yard hand walks the racking and collects the order. "
+        "Then he loads it onto the truck by hand. "
+        "Then he drives it to the customer and hands it over in person."
+    )
+    process["people_involved"]["roles"] = ["yard hand"]
+    return document
+
+
+class TestDisqualification(unittest.TestCase):
+    """The third mechanism: out of the ranking rather than low in it."""
+
+    def test_a_physical_process_leaves_the_ranking(self):
+        result = audit_document(physical_intake())
+        self.assertEqual(result.opportunities, ())
+        self.assertEqual(len(result.disqualified), 1)
+
+        item = result.disqualified[0]
+        self.assertEqual(item.trigger.raw_score, 1)
+        # No score and no band, rather than a low score and a low band.
+        self.assertIsNone(item.weighted_score)
+        self.assertIsNone(item.band)
+        self.assertEqual(item.rank, 0)
+
+    def test_the_referral_and_reasoning_are_carried(self):
+        item = audit_document(physical_intake()).disqualified[0]
+        self.assertIn("robotics automation specialist", item.disqualification.referral)
+        self.assertIn("no part of this process", item.disqualification.reason.lower())
+        # One sentence, drawn from the description rather than written by the engine.
+        self.assertTrue(item.evidence.endswith("."))
+        self.assertIn(item.evidence.rstrip("."), item.process.description)
+
+    def test_a_score_of_two_stays_in_the_ranking(self):
+        document = physical_intake()
+        # One step of the four is now software work, which lifts it off the floor.
+        document["processes"][0]["description"] = (
+            "The yard hand walks the racking and collects the order. "
+            "Then he loads it onto the truck by hand. "
+            "Then he types the delivery note into the system."
+        )
+        result = audit_document(document)
+        self.assertEqual(result.disqualified, ())
+        self.assertEqual(len(result.opportunities), 1)
+        self.assertGreaterEqual(result.opportunities[0].criterion(
+            "software_automatability").raw_score, 2)
+
+    def test_disqualified_processes_still_carry_every_criterion(self):
+        item = audit_document(physical_intake()).disqualified[0]
+        self.assertEqual(
+            {criterion.id for criterion in item.criteria},
+            set(load_rubric().criterion_ids),
+        )
+
+    def test_a_mixed_intake_splits_into_both_lists(self):
+        document = physical_intake()
+        desk_work = copy.deepcopy(minimal_intake()["processes"][0])
+        desk_work["id"] = "desk-work"
+        desk_work["name"] = "Typing orders into the system"
+        desk_work["description"] = (
+            "The administrator opens the order queue, then types each order into Xero, "
+            "then emails the customer to confirm."
+        )
+        document["processes"].append(desk_work)
+
+        result = audit_document(document)
+        self.assertEqual([o.process.id for o in result.opportunities], ["desk-work"])
+        self.assertEqual([d.process.id for d in result.disqualified], ["yard-work"])
+        self.assertEqual(len(result.all_processes), 2)
+
+    def test_the_report_says_so_plainly_in_both_formats(self):
+        result = audit_document(physical_intake())
+        text = render_markdown(result, generated_on=date(2026, 8, 8))
+        html = render_html(result, generated_on=date(2026, 8, 8))
+        for name, content in (("markdown", text), ("html", html)):
+            with self.subTest(output=name):
+                self.assertIn(
+                    "This process would benefit from collaboration with a robotics "
+                    "automation specialist local to your area.",
+                    content,
+                )
+                self.assertIn("Outside software automation", content)
+                self.assertIn("Loading customer orders onto the trucks", content)
+
+    def test_a_fully_disqualified_intake_still_reads_as_a_report(self):
+        result = audit_document(physical_intake())
+        text = render_markdown(result, generated_on=date(2026, 8, 8))
+        self.assertIn("## In short", text)
+        self.assertIn("None of the 1 process", text)
+        self.assertIn("generated by an AI system", text)
 
 
 class TestRationaleContract(unittest.TestCase):
@@ -998,8 +1175,11 @@ class TestScoring(unittest.TestCase):
 
         high = audit_document(with_baseline).opportunities[0]
         low = audit_document(without).opportunities[0]
-        # Three points of return band at weight 0.15.
-        self.assertAlmostEqual(high.weighted_score - low.weighted_score, 0.45, places=4)
+        # Three points of return band at its weight, which is 0.12 from rubric 1.4.0.
+        weight = load_rubric().criterion("return_band").weight
+        self.assertAlmostEqual(
+            high.weighted_score - low.weighted_score, 3 * weight, places=4
+        )
 
     def test_roi_cap_never_raises_a_low_score(self):
         document = minimal_intake()

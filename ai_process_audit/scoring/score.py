@@ -10,6 +10,7 @@ a rationale a reader can disagree with.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from ..model.models import Intake, Process
@@ -20,6 +21,7 @@ from .rubric import (
     AppliedCriterionCap,
     Band,
     CriterionCap,
+    Disqualification,
     Rubric,
     load_rubric,
 )
@@ -71,10 +73,18 @@ class Evaluation:
     judge_scores: dict[str, int]
     scores: dict[str, int]
     criterion_caps: dict[str, AppliedCriterionCap]
-    weighted_score: float
-    band_before_caps: Band
-    band: Band
+    # None when the process is disqualified. There is deliberately no score and no
+    # band in that case, rather than a low one, because a low score still invites the
+    # comparison that disqualification exists to prevent.
+    weighted_score: float | None
+    band_before_caps: Band | None
+    band: Band | None
     band_caps: tuple[AppliedCap, ...]
+    disqualification: Disqualification | None = None
+
+    @property
+    def is_disqualified(self) -> bool:
+        return self.disqualification is not None
 
 
 def evaluate(judge_scores: dict[str, int], process: Process, rubric: Rubric) -> Evaluation:
@@ -94,6 +104,22 @@ def evaluate(judge_scores: dict[str, int], process: Process, rubric: Rubric) -> 
         capped[criterion.id] = final_score
         if applied is not None:
             caps[criterion.id] = applied
+
+    # Checked before any arithmetic. A disqualified process gets no weighted score at
+    # all, so there is nothing to compute and nothing that could later be mistaken for
+    # a ranking position.
+    disqualification = rubric.disqualification_for(capped)
+    if disqualification is not None:
+        return Evaluation(
+            judge_scores={key: int(value) for key, value in judge_scores.items()},
+            scores=capped,
+            criterion_caps=caps,
+            weighted_score=None,
+            band_before_caps=None,
+            band=None,
+            band_caps=(),
+            disqualification=disqualification,
+        )
 
     weighted = round(
         sum(
@@ -160,6 +186,38 @@ class Opportunity:
 
 
 @dataclass(frozen=True)
+class Disqualified:
+    """A process removed from the ranking rather than scored.
+
+    It carries the same per criterion scores as an Opportunity, so a labeller and the
+    failure analysis can still compare every criterion. What it does not have is a
+    weighted score, a band, or a rank, because it is not in the running.
+    """
+
+    process: Process
+    process_map: ProcessMap
+    verdict: JudgeVerdict
+    criteria: tuple[ScoredCriterion, ...]
+    disqualification: Disqualification
+    evidence: str
+
+    # Kept so anything iterating over both kinds can ask without a type check.
+    weighted_score: None = None
+    band: None = None
+    rank: int = 0
+
+    def criterion(self, criterion_id: str) -> ScoredCriterion:
+        for item in self.criteria:
+            if item.id == criterion_id:
+                return item
+        raise KeyError(criterion_id)
+
+    @property
+    def trigger(self) -> ScoredCriterion:
+        return self.criterion(self.disqualification.criterion)
+
+
+@dataclass(frozen=True)
 class AuditResult:
     """The full output of one run of the engine."""
 
@@ -168,10 +226,16 @@ class AuditResult:
     opportunities: tuple[Opportunity, ...]
     judge_id: str
     judge_mode: str
+    disqualified: tuple[Disqualified, ...] = ()
 
     @property
     def rubric_is_approved(self) -> bool:
         return self.rubric.approved
+
+    @property
+    def all_processes(self) -> tuple[Opportunity | Disqualified, ...]:
+        """Everything scored, ranked first then disqualified."""
+        return self.opportunities + self.disqualified
 
 
 def _applies_to(cap: CriterionCap, process: Process) -> bool:
@@ -212,6 +276,20 @@ def _apply_criterion_caps(
     return final, applied
 
 
+def _first_sentence(text: str) -> str:
+    """The opening sentence of a description, for quoting back as evidence.
+
+    Used only when a process is disqualified, so the report can say why in the
+    business's own words rather than in the engine's.
+    """
+    cleaned = " ".join(text.split())
+    match = re.search(r"^(.+?[.!?])(\s|$)", cleaned)
+    sentence = match.group(1) if match else cleaned
+    if len(sentence) > 240:
+        sentence = sentence[:237].rsplit(" ", 1)[0] + "..."
+    return sentence
+
+
 def score_process(
     process: Process,
     process_map: ProcessMap,
@@ -250,6 +328,16 @@ def score_process(
         )
         for criterion in rubric.criteria
     )
+
+    if evaluation.is_disqualified:
+        return Disqualified(
+            process=process,
+            process_map=process_map,
+            verdict=verdict,
+            criteria=scored,
+            disqualification=evaluation.disqualification,
+            evidence=_first_sentence(process.description),
+        )
 
     return Opportunity(
         process=process,
@@ -303,10 +391,15 @@ def score_intake(
     judge = judge if judge is not None else get_judge("stub")
 
     opportunities: list[Opportunity] = []
+    disqualified: list[Disqualified] = []
     for process in intake.processes:
         process_map = build_process_map(process, intake.business)
         verdict = judge.judge(process, process_map, rubric)
-        opportunities.append(score_process(process, process_map, verdict, rubric))
+        outcome = score_process(process, process_map, verdict, rubric)
+        if isinstance(outcome, Disqualified):
+            disqualified.append(outcome)
+        else:
+            opportunities.append(outcome)
 
     return AuditResult(
         intake=intake,
@@ -314,4 +407,6 @@ def score_intake(
         opportunities=rank(opportunities),
         judge_id=judge.judge_id,
         judge_mode=judge.mode,
+        # Ordered by process id so two runs over the same intake match.
+        disqualified=tuple(sorted(disqualified, key=lambda item: item.process.id)),
     )

@@ -1,7 +1,7 @@
 {
   "gold_format": "2",
   "intake_file": "../intakes/boutique-landscaping.json",
-  "rubric_version": "1.3.0-draft",
+  "rubric_version": "1.4.0-draft",
   "labelled_by": "",
   "labelled_on": "",
   "labelling_notes": "Score each criterion from 1 to 5 using the anchor tables in rubric.md. Score implementation risk as risk, where 5 is riskiest. Leave a score as null if you have not decided yet. Put your reasoning for a score in rationales under the same criterion id, which is what the failure analysis prints next to the engine's reasoning. Do not change a label to make the engine agree.",
@@ -15,7 +15,8 @@
         "volume": null,
         "data_availability": null,
         "implementation_risk": null,
-        "return_band": null
+        "return_band": null,
+        "software_automatability": null
       },
       "rationales": {
         "pain": "",
@@ -23,7 +24,8 @@
         "volume": "",
         "data_availability": "",
         "implementation_risk": "",
-        "return_band": ""
+        "return_band": "",
+        "software_automatability": ""
       }
     },
     "material-sourcing": {
@@ -35,7 +37,8 @@
         "volume": null,
         "data_availability": null,
         "implementation_risk": null,
-        "return_band": null
+        "return_band": null,
+        "software_automatability": null
       },
       "rationales": {
         "pain": "",
@@ -43,7 +46,8 @@
         "volume": "",
         "data_availability": "",
         "implementation_risk": "",
-        "return_band": ""
+        "return_band": "",
+        "software_automatability": ""
       }
     },
     "crew-scheduling": {
@@ -55,7 +59,8 @@
         "volume": null,
         "data_availability": null,
         "implementation_risk": null,
-        "return_band": null
+        "return_band": null,
+        "software_automatability": null
       },
       "rationales": {
         "pain": "",
@@ -63,7 +68,8 @@
         "volume": "",
         "data_availability": "",
         "implementation_risk": "",
-        "return_band": ""
+        "return_band": "",
+        "software_automatability": ""
       }
     },
     "month-end-invoicing": {
@@ -75,7 +81,8 @@
         "volume": null,
         "data_availability": null,
         "implementation_risk": null,
-        "return_band": null
+        "return_band": null,
+        "software_automatability": null
       },
       "rationales": {
         "pain": "",
@@ -83,7 +90,8 @@
         "volume": "",
         "data_availability": "",
         "implementation_risk": "",
-        "return_band": ""
+        "return_band": "",
+        "software_automatability": ""
       }
     },
     "warranty-replacements": {
@@ -95,7 +103,8 @@
         "volume": null,
         "data_availability": null,
         "implementation_risk": null,
-        "return_band": null
+        "return_band": null,
+        "software_automatability": null
       },
       "rationales": {
         "pain": "",
@@ -103,7 +112,8 @@
         "volume": "",
         "data_availability": "",
         "implementation_risk": "",
-        "return_band": ""
+        "return_band": "",
+        "software_automatability": ""
       }
     }
   }

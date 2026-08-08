@@ -33,7 +33,7 @@ so check the path the command prints. Then, with rubric.md open beside you:
 1. Set `labelled_by` to your name. The harness refuses a file that has scores in it
    but does not say whose they are.
 2. Set `labelled_on` to the date.
-3. Read one process in the intake, then score all six criteria for it before moving
+3. Read one process in the intake, then score all seven criteria for it before moving
    to the next. Scoring one criterion across every process invites you to rank
    rather than to score against the anchors.
 4. Score implementation risk as risk. Higher is riskier. The engine does the

@@ -128,6 +128,7 @@ class IntakeComparison:
     ranking_pairs_agreed: int = 0
     ranking_pairs_compared: int = 0
     ranking_pairs_tied_in_gold: int = 0
+    disqualification_mismatches: int = 0
     disagreements: list[Disagreement] = field(default_factory=list)
     process_rows: list[dict[str, Any]] = field(default_factory=list)
 
@@ -220,7 +221,11 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
 
     intake = normalize_intake(load_intake(intake_path))
     result = score_intake(intake, judge=get_judge("stub", behaviour=stub_behaviour), rubric=rubric)
-    by_id: dict[str, Opportunity] = {item.process.id: item for item in result.opportunities}
+    # Disqualified processes are included. They have no band and no weighted score, so
+    # they take no part in band or ranking agreement, but every criterion was still
+    # scored and a labeller still labelled all seven, so per criterion agreement is
+    # exactly as meaningful for them as for anything else.
+    by_id = {item.process.id: item for item in result.all_processes}
 
     comparison = IntakeComparison(
         intake_id=intake.intake_id,
@@ -281,26 +286,41 @@ def compare_one(gold_path: Path, rubric: Rubric, stub_behaviour: str = "heuristi
             comparison.labelled_processes += 1
 
         gold = _gold_evaluation(labelled_criteria, opportunity.process, rubric)
-        if gold is not None:
+
+        # A band comparison needs a band on both sides. Either side being disqualified
+        # means there is no band to compare, and counting that as a mismatch would be
+        # counting the absence of a number as a wrong number.
+        engine_band = opportunity.band
+        gold_band = gold.band if gold is not None else None
+        if gold is not None and engine_band is not None and gold_band is not None:
             gold_scores[process_id] = gold.weighted_score
             comparison.band_compared += 1
-            if gold.band.id == opportunity.band.id:
+            if gold_band.id == engine_band.id:
                 comparison.band_matches += 1
+        elif gold is not None and (engine_band is None) != (gold_band is None):
+            # One side disqualified the process and the other did not. That is a real
+            # disagreement about the process, and it is recorded as a disagreement on
+            # the criterion that triggers it rather than silently dropped.
+            comparison.disqualification_mismatches += 1
 
         comparison.process_rows.append(
             {
                 "process_id": process_id,
                 "process_name": opportunity.process.name,
                 "engine_score": opportunity.weighted_score,
-                "engine_band": opportunity.band.label,
+                "engine_band": engine_band.label if engine_band is not None else "disqualified",
                 "gold_score": gold.weighted_score if gold is not None else None,
-                "gold_band": gold.band.label if gold is not None else None,
+                "gold_band": gold_band.label if gold_band is not None else (
+                    "disqualified" if gold is not None else None
+                ),
                 "engine_rank": opportunity.rank,
             }
         )
 
     # Ranking agreement over every pair of fully labelled processes. This is the
     # metric closest to what the product actually claims, which is an order.
+    # gold_scores only holds processes ranked on both sides, so a disqualified process
+    # never enters a ranking pair.
     for left, right in combinations(sorted(gold_scores), 2):
         comparison.ranking_pairs_compared += 1
         gold_delta = gold_scores[left] - gold_scores[right]
@@ -378,6 +398,9 @@ def summarise(
         "ranking_pairs_tied_in_gold": pairs_tied,
         "unlabelled_criteria": sum(c.unlabelled_criteria for c in comparisons),
         "disagreements": total_disagreements,
+        "disqualification_mismatches": sum(
+            c.disqualification_mismatches for c in comparisons
+        ),
     }
     return per_criterion, overall
 
@@ -434,6 +457,10 @@ def write_failure_analysis(
     lines.append(
         f"- Ranking agreement on pairs: {_percent(overall['ranking_pair_agreement'])} "
         f"over {overall['ranking_pairs_compared']} pair(s)"
+    )
+    lines.append(
+        f"- Processes where one side disqualified and the other did not: "
+        f"{overall['disqualification_mismatches']}"
     )
     lines.append(f"- Criteria left unlabelled: {overall['unlabelled_criteria']}")
     lines.append("")

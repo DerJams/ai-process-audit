@@ -125,6 +125,26 @@ def _result_to_dict(result: AuditResult) -> dict:
             }
             for item in result.opportunities
         ],
+        "disqualified": [
+            {
+                "process_id": item.process.id,
+                "process_name": item.process.name,
+                "criterion": item.disqualification.criterion,
+                "score": item.trigger.raw_score,
+                "reason": item.disqualification.reason,
+                "referral": item.disqualification.referral,
+                "evidence": item.evidence,
+                "criteria": {
+                    criterion.id: {
+                        "raw_score": criterion.raw_score,
+                        "judge_score": criterion.judge_score,
+                        "rationale": criterion.rationale,
+                    }
+                    for criterion in item.criteria
+                },
+            }
+            for item in result.disqualified
+        ],
     }
 
 
@@ -145,6 +165,11 @@ def _print_ranking(result: AuditResult) -> None:
                 f"   capped down from {cap.band_before.label} because "
                 f"{cap.criterion_label.lower()} is {cap.raw_score}"
             )
+    for item in result.disqualified:
+        print()
+        print(f"Not ranked: {item.process.name}")
+        print(f"   {item.disqualification.reason}")
+        print(f"   {item.disqualification.referral}")
     if result.judge_mode == "stub":
         print()
         print(

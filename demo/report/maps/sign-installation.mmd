@@ -1,0 +1,20 @@
+flowchart TD
+    start(["Start"])
+    S1["Two installers load the finished sign, the brackets, and the lift..."]
+    S2["They drive to the customer site"]
+    S3{{"They meet the store manager, walk the frontage, and check the fixing..."}}
+    S4[["They raise the sign, fix it to the wall, and level it by eye"]]
+    S5["They clear the site and hand the customer a completion sheet to sign"]
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> finish
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1["Step done by hand"]
+        L2{{"Check or approval"}}
+        L3[["Done in a system"]]
+    end

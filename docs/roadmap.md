@@ -56,6 +56,49 @@ Treating it as a disqualifier would mean declining to help a business precisely 
 it is already committed to a period of disruption, which is when the pain is usually
 highest and the appetite to fix it is greatest.
 
+### Hardware enablement, a fourth input
+
+**Status: not built, and deliberately excluded from scoring.**
+
+Some processes are software automatable but need something physical to feed the
+software: a sensor on a machine, a camera over a bench, a scanner at a counter.
+
+Rubric 1.4.0 is explicit that this does **not** reduce the software automatability
+score. Reading a gauge, scanning a label, or photographing a finished job are inputs a
+machine can supply, and needing that hardware makes the build more expensive without
+making the process a worse candidate. Hardware enablement affects complexity, not fit,
+and folding it into a fit score would hide the difference between "this cannot be
+automated" and "this needs a camera first". Those are different answers and they lead
+to different conversations.
+
+So it becomes a fourth input to the complexity indicator, alongside application count,
+API integration tier, and planned system change. Same rule as the other three: derived
+from collected fields, never judged, and kept out of the rubric.
+
+What is not yet decided is how to collect it. The obvious question, "would this need a
+sensor or camera", is one a business owner cannot reliably answer, and that fails the
+constraint every intake field has had to meet so far.
+
+### Naming a domain specialist on high risk processes
+
+**Status: not built.**
+
+Rubric 1.4.0 added a referral to a robotics automation specialist for processes
+disqualified as outside software. The reasoning was that silence reads as a verdict on
+the business rather than on the boundary of what this audit covers.
+
+The same argument applies to a process scoring 5 on implementation risk. At that anchor
+a single wrong output is a serious event, and the audit says so and then stops. That
+is honest but not useful. A process that is legally binding, safety related, or
+regulated may warrant naming the kind of specialist worth involving, in the same plain
+language and for the same reason.
+
+What has to be worked out first is what specialist, and on what evidence. The robotics
+referral works because the disqualification already establishes the category. Risk at 5
+covers legal, safety, and regulatory in one score, and those point at three different
+professions. Splitting that reliably probably means reading `risk_flags` rather than
+the score, which is a small piece of design rather than a big one.
+
 ### What has to be decided before it is built
 
 - Whether the indicator is shown as a separate figure alongside the recommendation

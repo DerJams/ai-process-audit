@@ -106,6 +106,22 @@ class AppliedCriterionCap:
 
 
 @dataclass(frozen=True)
+class Disqualification:
+    """A rule that removes a process from the ranking instead of scoring it.
+
+    The third of the three mechanisms that sit outside the weighted average. A cap
+    adjusts a number. This produces no number at all, because a low score still
+    invites comparison and comparing a process software cannot perform against ones it
+    can is the comparison itself being wrong.
+    """
+
+    criterion: str
+    at_or_below: int
+    reason: str
+    referral: str
+
+
+@dataclass(frozen=True)
 class AppliedCap:
     """A record that a cap changed the recommendation, kept so the report can say so."""
 
@@ -129,6 +145,7 @@ class Rubric:
     source_path: Path
     band_caps: tuple[BandCap, ...] = ()
     criterion_caps: tuple[CriterionCap, ...] = ()
+    disqualifications: tuple[Disqualification, ...] = ()
 
     @property
     def criterion_ids(self) -> tuple[str, ...]:
@@ -157,6 +174,14 @@ class Rubric:
             if weighted_score >= band.min_score:
                 return band
         return self.bands[-1]
+
+    def disqualification_for(self, scores: dict[str, int]) -> Disqualification | None:
+        """The first disqualification these scores trigger, if any."""
+        for rule in self.disqualifications:
+            score = scores.get(rule.criterion)
+            if score is not None and score <= rule.at_or_below:
+                return rule
+        return None
 
     def band_by_id(self, band_id: str) -> Band:
         for band in self.bands:
@@ -301,6 +326,28 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
             )
         )
 
+    disqualifications: list[Disqualification] = []
+    for entry in spec.get("disqualifications", []):
+        if entry["criterion"] not in seen_ids:
+            raise RubricError(
+                f"Disqualification in {path} refers to criterion "
+                f"{entry['criterion']!r}, which is not defined in this rubric"
+            )
+        if not entry.get("referral"):
+            raise RubricError(
+                f"Disqualification on {entry['criterion']!r} in {path} has no referral. "
+                "A process removed from the ranking must be pointed somewhere useful, "
+                "because silence reads as a verdict on the business."
+            )
+        disqualifications.append(
+            Disqualification(
+                criterion=entry["criterion"],
+                at_or_below=int(entry["at_or_below"]),
+                reason=entry.get("reason", ""),
+                referral=entry["referral"],
+            )
+        )
+
     scale = spec["scale"]
     return Rubric(
         version=spec["version"],
@@ -312,6 +359,7 @@ def _build_rubric(spec: dict, path: Path) -> Rubric:
         source_path=path,
         band_caps=tuple(caps),
         criterion_caps=tuple(criterion_caps),
+        disqualifications=tuple(disqualifications),
     )
 
 

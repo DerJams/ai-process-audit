@@ -345,12 +345,14 @@ class TestCapHandling(unittest.TestCase):
             "data_availability": 4,
             "implementation_risk": 2,
             "return_band": 5,
+            "software_automatability": 4,
         }
         with tempfile.TemporaryDirectory() as directory:
             _, gold_path = self.build(directory, labels)
             report = run([gold_path], self.rubric, Path(directory) / "out")
             row = report["intakes"][0]["processes"][0]
-            self.assertAlmostEqual(row["gold_score"], 3.70, places=4)
+            # 4.12 uncapped, and 3.76 once the return band is held at 2.
+            self.assertAlmostEqual(row["gold_score"], 3.76, places=4)
             self.assertEqual(row["gold_band"], "Worth a pilot")
 
     def test_gold_band_applies_the_implementation_risk_band_cap(self):
@@ -365,7 +367,7 @@ class TestCapHandling(unittest.TestCase):
             )
             report = run([gold_path], self.rubric, Path(directory) / "out")
             row = report["intakes"][0]["processes"][0]
-            self.assertAlmostEqual(row["gold_score"], 4.40, places=4)
+            self.assertAlmostEqual(row["gold_score"], 4.52, places=4)
             self.assertEqual(row["gold_band"], "Worth a pilot")
 
     def test_gold_and_engine_bands_come_from_one_implementation(self):

@@ -6,6 +6,11 @@ Intake collected {{ intake.collected_on }}.
 {% endif %}
 Generated {{ generated_on }} against rubric {{ rubric.version }} by judge `{{ result.judge_id }}` in {{ result.judge_mode }} mode.
 
+{% if not opportunities and disqualified %}
+## In short
+
+None of the {{ disqualified | length }} process{{ "es" if disqualified | length != 1 else "" }} reviewed can be automated with software. They are listed under Outside software automation below, with a suggested next step.
+{% endif %}
 {% if opportunities %}
 {% set lead = opportunities[0] %}
 ## In short
@@ -41,6 +46,23 @@ Scores run from {{ "%.2f" | format(rubric.scale_min | float) }} to {{ "%.2f" | f
 {{ band.label }} at {{ band.min_score | score }} and above{{ "." if loop.last else ";" }}
 {% endfor %}
 
+{% if disqualified %}
+## Outside software automation
+
+{{ disqualified | length }} process{{ "es" if disqualified | length != 1 else "" }} did not go into the ranking above. Scoring {{ "them" if disqualified | length != 1 else "it" }} against processes software can perform would produce a number that answers a question you did not ask, so {{ "they are" if disqualified | length != 1 else "it is" }} reported here instead.
+
+{% for item in disqualified %}
+### {{ item.process.name }}
+
+{{ item.disqualification.reason }}
+
+From the description: {{ item.evidence }}
+
+{{ item.disqualification.referral }}
+
+{% endfor %}
+{% endif %}
+
 {% if planned_changes %}
 ## Sequencing note: system changes already planned
 
@@ -57,7 +79,7 @@ This engine does not yet work out what the sequencing should be. Deciding whethe
 
 ## How the scoring works
 
-Each process is scored from {{ rubric.scale_min }} to {{ rubric.scale_max }} on {{ rubric.criteria | length }} criteria. Five point the same way, where a higher score means a better candidate. Implementation risk points the other way, so it is inverted before the weighted score is worked out. The inversion is done by the engine, not by the judge.
+Each process is scored from {{ rubric.scale_min }} to {{ rubric.scale_max }} on {{ rubric.criteria | length }} criteria. All but one point the same way, where a higher score means a better candidate. Implementation risk points the other way, so it is inverted before the weighted score is worked out. The inversion is done by the engine, not by the judge.
 
 | Criterion | Weight | Direction |
 | --- | --- | --- |
@@ -81,6 +103,14 @@ One further rule sits outside the arithmetic entirely. A weighted average lets f
 {% endfor %}
 
 Where that cap applies, the score is still reported exactly as calculated and the band the score earned is shown next to it, so the number the cap overrode is visible.
+{% endif %}
+
+{% if rubric.disqualifications %}
+A third rule removes a process from the ranking rather than adjusting it:
+
+{% for rule in rubric.disqualifications %}
+- A process scoring {{ rule.at_or_below }} on {{ rubric.criterion(rule.criterion).label | lower }} gets no weighted score and no band at all. {{ rule.reason }}
+{% endfor %}
 {% endif %}
 
 ---

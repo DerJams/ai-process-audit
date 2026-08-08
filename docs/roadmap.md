@@ -69,6 +69,65 @@ highest and the appetite to fix it is greatest.
   asking the business something they cannot answer from memory. That constraint has
   held for every field in the intake so far and should hold for this one.
 
+## Tighten schema_version before the chatbot writes intakes
+
+**Status: known hole, accepted for now.**
+
+`schema_version` is an enum of `1.2.0` and `1.3.0` rather than a const, because 1.3.0
+only adds one optional field and removes nothing, so a 1.2.0 document still satisfies
+the schema. That is what lets the Gemini authored intakes stay untouched.
+
+The hole it leaves: a document can declare `1.2.0` and carry `planned_system_change`,
+and it will validate. Nothing rejects it, because the version string is checked
+against a list rather than against what the document actually contains. So the version
+no longer strictly describes the contents, it describes the earliest version the
+contents could have been written against, which is not the same claim.
+
+Low risk while intakes are hand managed and there are three of them. It stops being
+low risk the moment the intake chatbot is writing files, because then a version string
+is being generated rather than typed by someone who knows what they meant, and a
+mislabelled document could sit in the eval set for months looking fine.
+
+The fix is a conditional: when `schema_version` is `1.2.0`, no process may carry a
+field introduced after it. JSON Schema can express that with `if` and `then` over the
+`processes` items, at the cost of a block that has to be extended on every version
+bump. That maintenance cost is the reason it is not there yet, and it is worth paying
+before anything starts generating intakes rather than after.
+
+Do this before the chatbot writes its first file, not after.
+
+## Rule for the deployment work: assert on the artifact, not the exit code
+
+**Status: a rule, not a task. It applies to anything that shells out.**
+
+Three bugs in this project have had exactly the same shape, all in the Edge PDF
+fallback:
+
+1. A fresh profile directory sent Edge into its first run flow, so it exited zero
+   without printing.
+2. A relative output path was resolved against Edge's working directory rather than
+   ours, so it exited zero having written the file somewhere nobody looked.
+3. Edge exited before the PDF had been flushed, so the process returning was read as a
+   finished render when the file was not there yet.
+
+In all three, the exit code was zero, the artifact was absent, and the failure was
+indistinguishable from the tool not being installed. The first two were diagnosed as
+"Edge is missing" before anyone looked at the file.
+
+**So: never treat process exit as evidence that an artifact exists. Assert on the
+artifact.** Check that the file is there, that it is not empty, and where it matters
+that it is the right shape. A subprocess that returns zero has told you it finished,
+not that it did the job, and those are different claims.
+
+This is already applied in one place worth copying. The CI workflow does not trust the
+report command's exit code, because that command is built to degrade rather than fail
+when a renderer is missing. It greps for a non empty PDF for every intake instead. Any
+deployment step that produces a file should be checked the same way.
+
+The rule generalises past subprocesses: an upload that returns 200, a deploy that
+reports success, and a migration that logs "done" are all the same claim, and none of
+them is the artifact.
+
 ## Out of scope for the engine
 
 Recorded here so it stays out: the chatbot that collects the intake, the website

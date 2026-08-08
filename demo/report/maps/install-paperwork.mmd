@@ -1,0 +1,15 @@
+flowchart TD
+    start(["Start"])
+    S1("After a storefront or vehicle install the installer photographs the...")
+    S2["office administrator: The office administrator types the completion..."]
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> finish
+    classDef manual fill:#fdf2e2,stroke:#b3762a,color:#3d2a0c;
+    class S1,S2 manual;
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1("Message to someone")
+        L2["Typing or copying data"]
+    end

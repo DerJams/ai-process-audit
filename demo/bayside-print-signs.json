@@ -1,0 +1,180 @@
+{
+  "schema_version": "1.4.0",
+  "intake_id": "bayside-print-demo",
+  "collected_on": "2026-08-08",
+  "business": {
+    "name": "Bayside Print and Signs",
+    "industry": "Commercial printing, vehicle wraps, and storefront signage",
+    "headcount": 17,
+    "tools_in_use": [
+      "QuickBooks Online",
+      "Excel",
+      "Outlook",
+      "Onyx RIP software",
+      "text messages",
+      "paper job tickets",
+      "shared drive"
+    ],
+    "notes": "Demo intake only. This business is invented and exists to show the shape of the output. It is not part of the gold set and is never labelled. Two owners, four press operators, two installers, three designers, an estimator, a production manager, and four across finishing and delivery."
+  },
+  "processes": [
+    {
+      "id": "artwork-approval",
+      "name": "Getting artwork approved by the customer",
+      "description": "A designer prepares a proof and exports it as a PDF. She emails it to the customer from Outlook with the job number in the subject line, then waits. If nothing comes back in two days she follows up, usually by phone. When the customer replies with changes, the designer works out whether the change is inside the quoted scope, makes the edit, and sends a revised proof. Once the customer approves, she prints the email, puts it in the paper job ticket, and marks the job ready in the production spreadsheet.",
+      "frequency": "daily",
+      "volume": {
+        "count": 18,
+        "unit": "proofs",
+        "period": "per_day",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 4,
+        "roles": ["designer", "estimator", "customer"],
+        "hours_per_run": 5
+      },
+      "time_spent": {
+        "hours_per_week": 22
+      },
+      "current_tools": ["Outlook", "shared drive", "Excel", "paper job tickets", "phone"],
+      "pain_description": "Approval is where jobs stall. The average job sits three days waiting on a reply and nobody knows which ones are stuck without opening the spreadsheet. Two jobs went to press on a superseded proof last quarter, one of them a full vehicle wrap that had to be redone at a cost of about twenty five hundred dollars. Designers say the follow up is the worst part of the job, and one quit in April and said so on the way out.",
+      "decision_type": "mixed",
+      "exception_rate": "occasional",
+      "baseline_metric": "average days from proof sent to approval, tracked in the production spreadsheet, currently about three",
+      "customer_facing": true,
+      "risk_flags": ["handles_money"],
+      "data_notes": "Proofs are PDFs on the shared drive named by job number, mostly consistently. Approvals are free text emails in Outlook, and the printed copy in the job ticket is the version the shop floor trusts. The production spreadsheet is maintained by hand.",
+      "planned_system_change": {
+        "description": "We have signed for a print management system called Clarity that has a customer approval portal built in, and it is supposed to go live at the end of the quarter.",
+        "timeframe": "within_3_months"
+      },
+      "owner": "Naomi Petrakis"
+    },
+    {
+      "id": "quote-turnaround",
+      "name": "Quoting trade and retail work",
+      "description": "Inquiries arrive by email, by phone, and through the website form. The estimator reads the inquiry, works out material and press time from a costing spreadsheet he built, adds a margin that depends on who the customer is, and writes the quote into a Word template. He emails it out and logs the job number and dollar value in the quotes tab. Trade customers get a standing discount that he applies from memory.",
+      "frequency": "daily",
+      "volume": {
+        "count": 12,
+        "unit": "quotes",
+        "period": "per_day",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 2,
+        "roles": ["estimator", "owner"],
+        "hours_per_run": 4
+      },
+      "time_spent": {
+        "hours_per_week": 20,
+        "minutes_per_case": 25
+      },
+      "current_tools": ["Outlook", "Excel", "Microsoft Word", "website form", "phone"],
+      "pain_description": "The estimator is the bottleneck for the whole shop and he knows it. Quotes go out same day when he is in and three days late when he is not, and the owners think they lose work on the slow ones but cannot prove it. The costing spreadsheet has grown to fourteen tabs and only he understands the press time formulas. He is the single point of failure everyone jokes about.",
+      "decision_type": "judgment_heavy",
+      "exception_rate": "frequent",
+      "baseline_metric": "quotes sent per day and total quoted value, logged in the quotes tab",
+      "customer_facing": true,
+      "risk_flags": ["handles_money"],
+      "data_notes": "Inquiry data is free text across three channels. The costing spreadsheet is structured but idiosyncratic. QuickBooks Online holds the customer list and the trade discounts, though the estimator applies them from memory rather than looking them up.",
+      "owner": "Ray Underhill"
+    },
+    {
+      "id": "production-scheduling",
+      "name": "Scheduling the press floor",
+      "description": "Every morning the production manager walks the floor, looks at the job tickets stacked by machine, and decides what runs in what order based on promised dates and what material is already loaded. He writes the day on a whiteboard. Later he updates the production spreadsheet, though often not until the afternoon.",
+      "frequency": "daily",
+      "volume": {
+        "count": 30,
+        "unit": "live jobs",
+        "period": "per_run",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 3,
+        "roles": ["production manager", "press operator"],
+        "hours_per_run": 1.5
+      },
+      "time_spent": {
+        "hours_per_week": 7
+      },
+      "current_tools": ["whiteboard", "paper job tickets", "Excel", "Onyx RIP software"],
+      "pain_description": "It works because the production manager has been here eleven years and knows which jobs can share a material load. When he took two weeks off in February the floor ran at about half throughput and they missed nine promised dates. None of what he knows is written down. Sales cannot see what is scheduled without walking out to the whiteboard and asking him.",
+      "decision_type": "judgment_heavy",
+      "exception_rate": "frequent",
+      "baseline_metric": null,
+      "customer_facing": false,
+      "risk_flags": [],
+      "data_notes": "The schedule lives on a whiteboard and in the production manager's head. Job data is on paper in the tickets. Onyx knows what has actually been printed but nobody reports off it.",
+      "planned_system_change": {
+        "description": "The same Clarity system is supposed to include a scheduling board, but the owners have not agreed whether the floor will use it or whether the whiteboard stays.",
+        "timeframe": "three_to_12_months"
+      },
+      "owner": "Trevor Mensah"
+    },
+    {
+      "id": "media-reordering",
+      "name": "Reordering print media and vinyl",
+      "description": "When an operator opens the last roll of something he writes it on a list taped to the racking, or tells the production manager, or does neither. Once a week the production manager reads the list, checks the racking himself for anything obviously low, and phones or emails the two main suppliers. Lead times run three to five days on most lines and longer on the specialty vinyls.",
+      "frequency": "weekly",
+      "volume": {
+        "count": 25,
+        "unit": "line items",
+        "period": "per_week",
+        "is_estimate": true
+      },
+      "people_involved": {
+        "count": 3,
+        "roles": ["production manager", "press operator", "supplier"],
+        "hours_per_run": 2
+      },
+      "time_spent": {
+        "hours_per_week": 2
+      },
+      "current_tools": ["paper", "phone", "Outlook", "supplier portals"],
+      "pain_description": "They run out of something about every other week and it always seems to land during a rush job. Twice this year they paid for overnight freight at four times the normal cost to hit a promised date. Nobody knows what stock is on the racking without walking out to look, and there is no record of what a job actually consumed.",
+      "decision_type": "mixed",
+      "exception_rate": "occasional",
+      "baseline_metric": null,
+      "customer_facing": false,
+      "risk_flags": [],
+      "data_notes": "Nothing is recorded. Requests are handwritten on a taped up list or said out loud. Supplier invoices arrive as PDFs by email and go straight to the bookkeeper. The supplier portals show order history but nobody exports it.",
+      "owner": "Trevor Mensah"
+    },
+    {
+      "id": "install-paperwork",
+      "name": "Closing out installation paperwork",
+      "description": "After a storefront or vehicle install the installer photographs the finished work on his phone, gets the customer to sign a paper completion sheet, and brings both back to the office at the end of the week. The office administrator types the completion into the production spreadsheet, saves the photos to the shared drive under the job number when she can work out which job they belong to, and passes the signed sheet to accounting so the job can be invoiced.",
+      "frequency": "several_times_per_week",
+      "volume": {
+        "count": 9,
+        "unit": "installs",
+        "period": "per_week",
+        "is_estimate": false
+      },
+      "people_involved": {
+        "count": 3,
+        "roles": ["installer", "office administrator", "customer"],
+        "hours_per_run": 3
+      },
+      "time_spent": {
+        "minutes_per_case": 35
+      },
+      "current_tools": ["phone camera", "paper", "Excel", "shared drive", "QuickBooks Online"],
+      "pain_description": "Invoicing waits on the paperwork coming back, so a Monday install is often invoiced ten days later. The photos arrive as a phone dump with no job numbers and the administrator guesses from the dates, which she says is the most annoying half hour of her week. One completion sheet went missing in March and the customer disputed that the work had been signed off at all.",
+      "decision_type": "rule_based",
+      "exception_rate": "rare",
+      "baseline_metric": "days from install to invoice, visible in QuickBooks Online, currently averaging ten",
+      "customer_facing": true,
+      "risk_flags": ["handles_money", "legally_binding"],
+      "data_notes": "Completion sheets are paper with a wet signature. Photos are unlabeled phone images. The production spreadsheet and QuickBooks Online both carry the job number, so the two can be tied together once someone types it in.",
+      "planned_system_change": {
+        "description": "The installers have been asking for a phone app to capture sign off on site, and one of the owners has been looking at options but nothing is chosen.",
+        "timeframe": "later_or_unknown"
+      },
+      "owner": "Bridget Kowalczyk"
+    }
+  ]
+}

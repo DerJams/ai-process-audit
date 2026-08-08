@@ -27,6 +27,31 @@ SHAPES: dict[str, tuple[str, str]] = {
 
 LABEL_LIMIT = 72
 
+# What each shape means, for the legend. Only the kinds actually used are drawn.
+KIND_MEANINGS: dict[str, str] = {
+    "task": "Step done by hand",
+    "data_entry": "Typing or copying data",
+    "approval": "Check or approval",
+    "decision": "Decision point",
+    "communication": "Message to someone",
+    "system": "Done in a system",
+    "wait": "Waiting on someone",
+}
+
+
+def _shorten(text: str, limit: int) -> str:
+    """Cut a label to length on a word boundary.
+
+    Cutting mid word produced labels like "custome..." which read as a rendering fault
+    rather than an abbreviation, and made the map look careless to anyone reading it.
+    """
+    if len(text) <= limit:
+        return text
+    cut = text[: limit - 3].rsplit(" ", 1)[0].rstrip(" ,;:.")
+    if not cut:
+        cut = text[: limit - 3]
+    return cut + "..."
+
 
 def _escape(text: str) -> str:
     """Make a label safe to sit inside a quoted Mermaid node."""
@@ -34,22 +59,42 @@ def _escape(text: str) -> str:
     cleaned = cleaned.replace('"', "'")
     # Mermaid treats these as markup inside labels even when quoted.
     cleaned = cleaned.replace("#", "no. ").replace("<", "(").replace(">", ")")
-    if len(cleaned) > LABEL_LIMIT:
-        cleaned = cleaned[: LABEL_LIMIT - 3].rstrip() + "..."
-    return cleaned
+    return _shorten(cleaned, LABEL_LIMIT)
 
 
 def _node(step: Step) -> str:
     open_shape, close_shape = SHAPES.get(step.kind, SHAPES["task"])
     label = _escape(step.text)
     if step.actor:
-        label = f"{_escape(step.actor)}: {label}"
-        if len(label) > LABEL_LIMIT:
-            label = label[: LABEL_LIMIT - 3].rstrip() + "..."
+        label = _shorten(f"{_escape(step.actor)}: {label}", LABEL_LIMIT)
     return f'{step.id}{open_shape}"{label}"{close_shape}'
 
 
-def render_mermaid(process_map: ProcessMap, direction: str = "TD") -> str:
+def _legend_lines(process_map: ProcessMap) -> list[str]:
+    """A key for the shapes that actually appear on this map.
+
+    Without it the shapes are a private code. Only the kinds used are listed, so the
+    key never explains something the reader cannot see.
+    """
+    kinds: list[str] = []
+    for step in process_map.steps:
+        if step.kind not in kinds:
+            kinds.append(step.kind)
+    if len(kinds) < 2:
+        return []
+
+    lines = ['    subgraph legend["What the shapes mean"]', "        direction LR"]
+    for index, kind in enumerate(kinds, start=1):
+        open_shape, close_shape = SHAPES.get(kind, SHAPES["task"])
+        meaning = KIND_MEANINGS.get(kind, kind.replace("_", " ").capitalize())
+        lines.append(f'        L{index}{open_shape}"{meaning}"{close_shape}')
+    lines.append("    end")
+    return lines
+
+
+def render_mermaid(
+    process_map: ProcessMap, direction: str = "TD", legend: bool = True
+) -> str:
     """Render a process map as Mermaid flowchart source."""
     lines = [f"flowchart {direction}"]
     lines.append('    start(["Start"])')
@@ -72,5 +117,8 @@ def render_mermaid(process_map: ProcessMap, direction: str = "TD") -> str:
     if waits:
         lines.append("    classDef waiting fill:#eef1f5,stroke:#6b7785,color:#26303b;")
         lines.append(f"    class {','.join(waits)} waiting;")
+
+    if legend:
+        lines.extend(_legend_lines(process_map))
 
     return "\n".join(lines)

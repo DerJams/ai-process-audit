@@ -1,0 +1,16 @@
+flowchart TD
+    start(["Start"])
+    S1{"When an operator opens the last roll of something he writes it on a..."}
+    S2{{"Once a week the production manager reads the list, checks the..."}}
+    S3["Lead times run three to five days on most lines and longer on the..."]
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> finish
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1{"Decision point"}
+        L2{{"Check or approval"}}
+        L3["Step done by hand"]
+    end

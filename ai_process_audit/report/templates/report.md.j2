@@ -6,6 +6,16 @@ Intake collected {{ intake.collected_on }}.
 {% endif %}
 Generated {{ generated_on }} against rubric {{ rubric.version }} by judge `{{ result.judge_id }}` in {{ result.judge_mode }} mode.
 
+{% if opportunities %}
+{% set lead = opportunities[0] %}
+## In short
+
+**{{ lead.process.name }}** is the strongest candidate of the {{ opportunities | length }} process{{ "es" if opportunities | length != 1 else "" }} reviewed, scoring {{ lead.weighted_score | score }} out of {{ "%.2f" | format(rubric.scale_max | float) }} and landing in {{ lead.band.label }}. What puts it top is {{ lead.strongest.label | lower }}: {{ lead.strongest.rationale }}
+{% if lead.weakest.id != lead.strongest.id %}
+The thing most likely to stop it is {{ lead.weakest.label | lower }}, scored {{ lead.weakest.raw_score }} out of {{ rubric.scale_max }}.
+{% endif %}
+{% endif %}
+
 > {{ disclosure }}
 
 {% if warnings %}
@@ -128,7 +138,7 @@ Strongest part of the case: {{ item.strongest.label | lower }}. Most likely to s
 
 ### Process map
 
-The engine inferred {{ item.process_map.step_count }} steps from the description, of which {{ item.process_map.manual_step_count }} are done by hand. It found {{ item.process_map.handoff_count }} handoff{{ "s" if item.process_map.handoff_count != 1 else "" }} between people and {{ item.process_map.wait_count }} waiting step{{ "s" if item.process_map.wait_count != 1 else "" }}.
+The engine inferred {{ item.process_map.step_count }} step{{ "s" if item.process_map.step_count != 1 else "" }} from the description, of which {{ item.process_map.manual_step_count }} {{ "is" if item.process_map.manual_step_count == 1 else "are" }} done by hand. It found {{ item.process_map.handoff_count }} handoff{{ "s" if item.process_map.handoff_count != 1 else "" }} between people and {{ item.process_map.wait_count }} waiting step{{ "s" if item.process_map.wait_count != 1 else "" }}.
 {% if item.process_map.truncated %}
 The description was long enough that step inference stopped early, so this map is incomplete.
 {% endif %}

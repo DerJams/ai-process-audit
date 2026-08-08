@@ -12,6 +12,20 @@ file. Turning it on is a deliberate, reviewed change, not a configuration flag.
 The judge answers exactly one question per criterion: a score on the rubric scale
 and one sentence saying why. It does not rank, it does not weight, and it does not
 decide the recommendation band. Those are deterministic and live in score.py.
+
+The rationale contract, which the live judge prompt must carry too:
+
+1. **Describe what was read. Never assert an absence of evidence in what the business
+   wrote.** A sentence like "the pain description does not name a specific cost" is a
+   claim about the business's own words, and it is wrong the moment the matching misses
+   something a reader can plainly see. Say what the text does say, and let the score
+   carry the judgement. A low score does not need the intake insulted to justify it.
+   Reporting that an optional structured field was not filled in is different and is
+   allowed, because that is a fact about the form rather than a claim about the prose.
+2. **Never surface a matched token.** Words like "including chasing, left" or "the best
+   source named is sage" expose the matching rather than reading as a finding. Name the
+   actual system or describe the actual problem, in normal prose.
+3. **One sentence, no jargon, no scores from other criteria.**
 """
 
 from __future__ import annotations
@@ -80,6 +94,43 @@ def _word_pattern(phrase: str) -> re.Pattern[str]:
     return re.compile(rf"\b{re.escape(phrase.strip())}\b", re.IGNORECASE)
 
 
+def _plural(count: int, noun: str, plural: str | None = None) -> str:
+    """Render a count with a noun that agrees with it."""
+    if count == 1:
+        return f"1 {noun}"
+    return f"{count} {plural or noun + 's'}"
+
+
+def _join_prose(items: list[str]) -> str:
+    """Join a list the way a person would write it."""
+    if len(items) == 1:
+        return items[0]
+    if len(items) == 2:
+        return f"{items[0]} and {items[1]}"
+    return f"{', '.join(items[:-1])}, and {items[-1]}"
+
+
+def _as_noun(tool: str) -> str:
+    """Name a tool so it reads as English.
+
+    Product names stand on their own, so "QuickBooks Online holds this". Generic
+    entries in the tool list do not, and "the records sit in shared drive" reads as a
+    missing word, so they take an article.
+    """
+    tool = tool.strip()
+    if tool[:1].isupper():
+        return tool
+    return f"the {tool}"
+
+
+def _first_words(text: str, limit: int) -> str:
+    """A short readable quote of what the intake said, cut on a word boundary."""
+    words = re.sub(r"\s+", " ", text).strip().split()
+    if len(words) <= limit:
+        return " ".join(words).rstrip(".")
+    return " ".join(words[:limit]).rstrip(",.") + " and so on"
+
+
 def _mentions(haystack: str, phrase: str) -> bool:
     """Whole word match.
 
@@ -107,13 +158,47 @@ _DATA_TIERS: list[tuple[int, tuple[str, ...]]] = [
          "data export", "sql")),
 ]
 
-_PAIN_WORDS: tuple[str, ...] = (
-    "error", "errors", "mistake", "mistakes", "wrong", "late", "missed", "miss",
-    "chase", "chasing", "complaint", "complaints", "angry", "upset", "stress",
-    "stressful", "overtime", "weekend", "evening", "quit", "left", "burnout",
-    "fine", "penalty", "lost", "losing", "rework", "twice", "duplicate", "backlog",
-    "argument", "escalate", "refund", "write off", "bad debt",
-)
+# What each tier means, written as a finding. The rationale says this rather than the
+# word that matched, so the sentence reads as a reading of the intake instead of a
+# printout of the matcher.
+_DATA_TIER_PROSE: dict[int, str] = {
+    1: "the information this process needs is kept on paper or carried in someone's head",
+    2: "the records exist as scans, photos, or free text with no consistent structure",
+    3: "the records sit in spreadsheets or email in a mostly consistent shape",
+    4: "the records are held in a business system with structured fields",
+    5: "the records are held in a system with a documented way to read them programmatically",
+}
+
+# Pain signals, grouped so the rationale can name the kind of trouble rather than the
+# word that matched. "Mistakes that reach customers" reads as a finding. "including
+# chasing, left" reads as a regex with delusions.
+_PAIN_CATEGORIES: list[tuple[str, tuple[str, ...]]] = [
+    (
+        "mistakes and rework",
+        ("error", "errors", "mistake", "mistakes", "wrong", "rework", "duplicate",
+         "twice", "write off", "scrap", "reprint", "redone"),
+    ),
+    (
+        "delays and chasing",
+        ("late", "missed", "chase", "chasing", "backlog", "waiting", "delay",
+         "delays", "overdue", "stuck"),
+    ),
+    (
+        "money going out of the door",
+        ("penalty", "fine", "refund", "bad debt", "lost", "losing", "credit",
+         "discount", "cost them", "wrote off"),
+    ),
+    (
+        "customers feeling it",
+        ("complaint", "complaints", "angry", "upset", "dispute", "disputed",
+         "escalate", "escalated", "churn", "walked"),
+    ),
+    (
+        "the strain on staff",
+        ("stress", "stressful", "overtime", "weekend", "evening", "quit", "left",
+         "burnout", "resigned", "off sick", "morale"),
+    ),
+]
 
 # Whether a process is customer facing is deliberately not in here. It has its own
 # field, and counting it in both places would have scored the same fact twice.
@@ -133,6 +218,22 @@ _RISK_BY_DECISION_TYPE: dict[str, int] = {
     "rule_based": -1,
     "mixed": 0,
     "judgment_heavy": 1,
+}
+
+# How the exception rate moves implementation risk. A long tail of exceptions is what
+# breaks an automation after launch, so frequent pushes up. Absent is read as
+# occasional, never as rare, because a business that has not counted its exceptions is
+# not thereby a business without any.
+_RISK_BY_EXCEPTION_RATE: dict[str, int] = {
+    "rare": -1,
+    "occasional": 0,
+    "frequent": 1,
+}
+
+_EXCEPTION_PROSE: dict[str, str] = {
+    "rare": "almost every case follows the same path",
+    "occasional": "a couple of cases in ten need handling differently",
+    "frequent": "a large minority of cases need handling differently",
 }
 
 # Words that suggest a process reaches people outside the business, used only when
@@ -214,18 +315,29 @@ class StubJudge:
 
     def _pain(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
         text = process.pain_description
-        hits = sorted({word for word in _PAIN_WORDS if _mentions(text, word)})
+        found = [
+            label
+            for label, words in _PAIN_CATEGORIES
+            if any(_mentions(text, word) for word in words)
+        ]
         handoffs = process_map.handoff_count
-        score = 1 + min(3, len(hits)) + (1 if handoffs >= 2 else 0)
-        if not hits:
+        score = 1 + min(3, len(found)) + (1 if handoffs >= 2 else 0)
+
+        where = (
+            f" across a process that changes hands {_plural(handoffs, 'time')}"
+            if handoffs
+            else ""
+        )
+        if not found:
+            # No category matched. Describe what was read rather than claiming the
+            # business named nothing, because the matching is shallow and the reader
+            # can see the text sitting right above this sentence.
             return 2, (
-                "The pain description does not name a specific error, delay, or cost, "
-                "so this scores low on the evidence given."
+                f"The described trouble is {_first_words(text, 14)}, which reads as a "
+                f"working difficulty rather than a named cost{where}."
             )
-        shown = ", ".join(hits[:3])
         return score, (
-            f"The pain description names {len(hits)} sign(s) of trouble including {shown}, "
-            f"across a process with {handoffs} handoff(s) between people."
+            f"The business describes {_join_prose(found)}{where}."
         )
 
     def _frequency(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
@@ -269,28 +381,47 @@ class StubJudge:
         )
 
     def _data_availability(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
-        haystack = " ".join([process.all_text, " ".join(process.current_tools)])
-        matched: list[tuple[int, str]] = []
+        tools = tuple(process.current_tools)
+        text = process.all_text
+
+        tiers_found: list[int] = []
+        named_system: str | None = None
         for tier, words in _DATA_TIERS:
-            for word in words:
-                if _mentions(haystack, word):
-                    matched.append((tier, word))
-                    break
-        if not matched:
+            # Prefer a match against a tool the business actually named, so the
+            # rationale can use its real name instead of the keyword that matched.
+            tool_hit = next(
+                (tool for tool in tools if any(_mentions(tool, word) for word in words)),
+                None,
+            )
+            if tool_hit is None and not any(_mentions(text, word) for word in words):
+                continue
+            tiers_found.append(tier)
+            if tool_hit is not None and tier >= 3:
+                named_system = tool_hit
+
+        if not tiers_found:
+            listed = _join_prose(list(tools)) if tools else "no tools at all"
             return 3, (
-                "The intake does not say where the information for this process lives, "
-                "so it scores at the midpoint by default."
+                f"This process runs on {listed}, which leaves the shape of the "
+                "underlying records open, so it sits at the midpoint."
             )
-        best_tier, best_word = max(matched, key=lambda pair: pair[0])
-        worst_tier, worst_word = min(matched, key=lambda pair: pair[0])
-        if best_tier == worst_tier:
+
+        best_tier = max(tiers_found)
+        worst_tier = min(tiers_found)
+
+        if named_system is not None and best_tier >= 4:
+            lead = f"{_as_noun(named_system)} holds this in structured fields"
+        elif named_system is not None and best_tier == 3:
+            lead = f"the records sit in {_as_noun(named_system)} in a mostly consistent shape"
+        else:
+            lead = _DATA_TIER_PROSE[best_tier]
+
+        if worst_tier < best_tier:
             return best_tier, (
-                f"The intake points at {best_word} as where this information lives."
+                f"{lead[0].upper()}{lead[1:]}, though some of the input still arrives in a "
+                "form that has to be handled by hand first."
             )
-        return best_tier, (
-            f"The best source named is {best_word}, though {worst_word} also appears, "
-            "so part of the input may need manual handling."
-        )
+        return best_tier, f"{lead[0].upper()}{lead[1:]}."
 
     def _implementation_risk(self, process: Process, process_map: ProcessMap) -> tuple[int, str]:
         notes: list[str] = []
@@ -299,8 +430,17 @@ class StubJudge:
         decision_type = process.decision_type
         if decision_type is None:
             decision_type = "mixed"
-            notes.append("decision type was not reported, so it is read as mixed")
+            notes.append("how much judgement it takes was not reported, so it is read as mixed")
         decision_shift = _RISK_BY_DECISION_TYPE[decision_type]
+
+        # Exception rate. Absent is read as occasional, never as rare.
+        exception_rate = process.exception_rate
+        if exception_rate is None:
+            exception_rate = "occasional"
+            notes.append(
+                "the exception rate was not reported, so it is read as occasional"
+            )
+        exception_shift = _RISK_BY_EXCEPTION_RATE[exception_rate]
 
         # Blast radius. Absent falls back to whether the text mentions anyone outside
         # the business, which the rubric also states.
@@ -317,30 +457,41 @@ class StubJudge:
 
         if process.risk_flags:
             base = max(_RISK_BY_FLAG.get(flag, 3) for flag in process.risk_flags)
-            named = ", ".join(flag.replace("_", " ") for flag in process.risk_flags)
-            reason = f"The intake flags this process as {named}"
+            named = _join_prose([flag.replace("_", " ") for flag in process.risk_flags])
+            reason = f"This process is flagged as {named}"
         else:
             approvals = sum(1 for step in process_map.steps if step.kind == "approval")
-            base = 2 - (1 if approvals >= 2 else 0)
-            reason = (
-                f"No risk flags were reported and the map shows {approvals} checking step(s)"
+            checks = (
+                f"the map shows {_plural(approvals, 'checking step')} along the way"
+                if approvals
+                else "the map shows the work running straight through without a checking step"
             )
+            base = 2 - (1 if approvals >= 2 else 0)
+            reason = f"Nothing about money, regulation, or safety was flagged, and {checks}"
 
-        score = base + decision_shift + (1 if customer_facing else 0)
+        score = base + decision_shift + exception_shift + (1 if customer_facing else 0)
 
         # A 1 is a claim that nothing can go wrong. The rubric forbids that claim when
-        # both optional fields are missing, because it would be a guess dressed as a
-        # finding.
-        floor = 2 if (process.decision_type is None and process.customer_facing is None) else 1
+        # all three optional fields are missing, because it would be a guess dressed as
+        # a finding.
+        all_absent = (
+            process.decision_type is None
+            and process.customer_facing is None
+            and process.exception_rate is None
+        )
+        floor = 2 if all_absent else 1
         score = max(floor, score)
-        if score == floor and floor == 2:
-            notes.append("it is not scored below 2 because neither field was reported")
+        if all_absent and score == floor:
+            notes.append("it is not scored below 2 while all three are unreported")
 
-        detail = f"{reason}, the work is {decision_type.replace('_', ' ')}, and an error "
-        detail += (
-            "would be seen by a customer rather than caught inside the business"
+        blast = (
+            "an error would be seen by a customer rather than caught inside the business"
             if customer_facing
-            else "would be caught inside the business as rework"
+            else "an error would be caught inside the business as rework"
+        )
+        detail = (
+            f"{reason}, the work is {decision_type.replace('_', ' ')}, "
+            f"{_EXCEPTION_PROSE[exception_rate]}, and {blast}"
         )
         tail = f" Scored conservatively because {'; '.join(notes)}." if notes else ""
         return score, f"{detail}.{tail}"

@@ -1,0 +1,23 @@
+flowchart TD
+    start(["Start"])
+    S1[["designer: A designer prepares a proof and exports it as a PDF"]]
+    S2("She emails it to the customer from Outlook with the job number in...")
+    S3{"If nothing comes back in two days she follows up, usually by phone"}
+    S4{"customer: When the customer replies with changes, the designer works..."}
+    S5{{"customer: Once the customer approves, she prints the email, puts it..."}}
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> S5
+    S5 --> finish
+    classDef manual fill:#fdf2e2,stroke:#b3762a,color:#3d2a0c;
+    class S2 manual;
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1[["Done in a system"]]
+        L2("Message to someone")
+        L3{"Decision point"}
+        L4{{"Check or approval"}}
+    end

@@ -1,0 +1,20 @@
+flowchart TD
+    start(["Start"])
+    S1("Inquiries arrive by email, by phone, and through the website form")
+    S2{"estimator: The estimator reads the inquiry, works out material and..."}
+    S3("He emails it out and logs the job number and dollar value in the...")
+    S4["Trade customers get a standing discount that he applies from memory"]
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> S4
+    S4 --> finish
+    classDef manual fill:#fdf2e2,stroke:#b3762a,color:#3d2a0c;
+    class S1,S3 manual;
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1("Message to someone")
+        L2{"Decision point"}
+        L3["Step done by hand"]
+    end

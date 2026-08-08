@@ -168,6 +168,19 @@ class TestValidator(unittest.TestCase):
         document["processes"][0]["baseline_metric"] = None
         self.assertIsNotNone(validate_intake(document))
 
+    def test_exception_rate_is_accepted(self):
+        for value in ("rare", "occasional", "frequent"):
+            with self.subTest(value=value):
+                document = minimal_intake()
+                document["processes"][0]["exception_rate"] = value
+                self.assertIsNotNone(validate_intake(document))
+
+    def test_bad_exception_rate_is_rejected(self):
+        document = minimal_intake()
+        document["processes"][0]["exception_rate"] = "loads"
+        with self.assertRaises(IntakeValidationError):
+            validate_intake(document)
+
     def test_planned_system_change_is_accepted(self):
         document = minimal_intake()
         document["processes"][0]["planned_system_change"] = {
@@ -356,6 +369,107 @@ class TestProcessMap(unittest.TestCase):
         intake = normalize_intake(validate_intake(document))
         process_map = build_process_map(intake.processes[0], intake.business)
         self.assertGreaterEqual(process_map.step_count, 1)
+
+    def test_shorten_cuts_on_a_word_boundary(self):
+        from ai_process_audit.processmap.mermaid import _shorten
+
+        text = "The administrator collects every single completed registration form today"
+        for limit in range(20, 60, 7):
+            with self.subTest(limit=limit):
+                out = _shorten(text, limit)
+                self.assertLessEqual(len(out), limit)
+                self.assertTrue(out.endswith("..."))
+                body = out[:-3]
+                # The kept text is a prefix of the original, and the original has a
+                # space right after it, so nothing was cut through a word.
+                self.assertTrue(text.startswith(body))
+                self.assertEqual(text[len(body)], " ")
+
+    def test_short_labels_are_left_alone(self):
+        from ai_process_audit.processmap.mermaid import _shorten
+
+        self.assertEqual(_shorten("Types it into Xero", 72), "Types it into Xero")
+
+    def test_rendered_labels_are_never_cut_mid_word(self):
+        document = minimal_intake()
+        document["processes"][0]["description"] = (
+            "The administrator collects every single completed customer registration "
+            "form from the front counter and checks it against the appointment diary, "
+            "then types the whole thing into the system."
+        )
+        intake = normalize_intake(validate_intake(document))
+        process_map = build_process_map(intake.processes[0], intake.business)
+        text = render_mermaid(process_map)
+        truncated = [line for line in text.splitlines() if '..."' in line]
+        self.assertTrue(truncated, "this fixture is meant to produce a long label")
+        sources = [step.text for step in process_map.steps]
+        for line in truncated:
+            label = line.split('"')[1]
+            body = label[:-3].split(": ", 1)[-1]
+            self.assertTrue(
+                any(source.startswith(body) and source[len(body) : len(body) + 1] == " " for source in sources),
+                f"label was cut inside a word: {label}",
+            )
+
+    def test_map_carries_a_legend_for_the_shapes_it_uses(self):
+        intake = normalize_intake(validate_intake(minimal_intake()))
+        process_map = build_process_map(intake.processes[0], intake.business)
+        text = render_mermaid(process_map)
+        self.assertIn('subgraph legend["What the shapes mean"]', text)
+        # Only shapes actually on the map are explained.
+        self.assertIn("Typing or copying data", text)
+        self.assertNotIn("Waiting on someone", text)
+
+    def test_legend_is_omitted_when_there_is_nothing_to_explain(self):
+        document = minimal_intake()
+        document["processes"][0]["description"] = (
+            "The administrator types the form into the system every single morning."
+        )
+        intake = normalize_intake(validate_intake(document))
+        text = render_mermaid(build_process_map(intake.processes[0], intake.business))
+        self.assertNotIn("subgraph legend", text)
+
+    def test_handoffs_are_counted_across_elided_subjects(self):
+        # The subject is named once and then dropped, which is how people write. Only
+        # counting steps that name someone missed almost every handoff, so these came
+        # out at zero on processes that visibly pass work between people.
+        document = minimal_intake()
+        document["processes"][0]["people_involved"]["roles"] = ["designer"]
+        document["processes"][0]["description"] = (
+            "The designer prepares the proof, then emails it out. "
+            "The customer reviews it and replies with changes. "
+            "The designer amends the artwork and sends it back."
+        )
+        intake = normalize_intake(validate_intake(document))
+        process_map = build_process_map(intake.processes[0], intake.business)
+        self.assertEqual(process_map.handoff_count, 2)
+
+    def test_a_subject_after_a_subordinating_conjunction_is_found(self):
+        # "When the customer replies" has the same subject as "The customer replies",
+        # and skipping it was part of why handoffs read as zero.
+        document = minimal_intake()
+        document["processes"][0]["description"] = (
+            "The administrator files the form. When the customer replies to the email, "
+            "the job is closed off."
+        )
+        intake = normalize_intake(validate_intake(document))
+        process_map = build_process_map(intake.processes[0], intake.business)
+        actors = [step.actor for step in process_map.steps if step.actor]
+        self.assertIn("Customer", actors)
+
+    def test_carried_actors_are_not_shown_as_if_they_were_read(self):
+        document = minimal_intake()
+        document["processes"][0]["people_involved"]["roles"] = ["designer"]
+        document["processes"][0]["description"] = (
+            "A designer prepares the proof, then emails it out to the printer."
+        )
+        intake = normalize_intake(validate_intake(document))
+        process_map = build_process_map(intake.processes[0], intake.business)
+        # Carried forward for counting, absent from the step itself and from the map.
+        self.assertEqual(process_map.effective_actors[1], "designer")
+        self.assertIsNone(process_map.steps[1].actor)
+        text = render_mermaid(process_map)
+        self.assertEqual(text.count("designer:"), 1)
 
     def test_mermaid_is_well_formed(self):
         for path in ALL_INTAKES:
@@ -601,6 +715,49 @@ class TestJudge(unittest.TestCase):
             scores[customer_facing] = verdict.scores["implementation_risk"].score
         self.assertLess(scores[False], scores[True])
 
+    def test_frequent_exceptions_score_riskier_than_rare(self):
+        scores = {}
+        for rate in ("rare", "occasional", "frequent"):
+            document = minimal_intake()
+            document["processes"][0]["decision_type"] = "mixed"
+            document["processes"][0]["customer_facing"] = False
+            document["processes"][0]["exception_rate"] = rate
+            intake = normalize_intake(validate_intake(document))
+            process = intake.processes[0]
+            verdict = StubJudge().judge(
+                process, build_process_map(process, intake.business), self.rubric
+            )
+            scores[rate] = verdict.scores["implementation_risk"].score
+        self.assertLess(scores["rare"], scores["frequent"])
+        self.assertLessEqual(scores["rare"], scores["occasional"])
+        self.assertLessEqual(scores["occasional"], scores["frequent"])
+
+    def test_absent_exception_rate_is_read_as_occasional_not_rare(self):
+        absent = minimal_intake()
+        absent["processes"][0]["decision_type"] = "mixed"
+        absent["processes"][0]["customer_facing"] = False
+        stated_rare = copy.deepcopy(absent)
+        stated_rare["processes"][0]["exception_rate"] = "rare"
+        stated_occasional = copy.deepcopy(absent)
+        stated_occasional["processes"][0]["exception_rate"] = "occasional"
+
+        results = {}
+        for name, document in (
+            ("absent", absent),
+            ("rare", stated_rare),
+            ("occasional", stated_occasional),
+        ):
+            intake = normalize_intake(validate_intake(document))
+            process = intake.processes[0]
+            verdict = StubJudge().judge(
+                process, build_process_map(process, intake.business), self.rubric
+            )
+            results[name] = verdict.scores["implementation_risk"]
+
+        self.assertEqual(results["absent"].score, results["occasional"].score)
+        self.assertGreater(results["absent"].score, results["rare"].score)
+        self.assertIn("exception rate was not reported", results["absent"].rationale)
+
     def test_risk_is_scorable_when_both_optional_fields_are_absent(self):
         document = minimal_intake()
         document["processes"][0].pop("decision_type", None)
@@ -679,6 +836,73 @@ class TestJudge(unittest.TestCase):
     def test_unknown_mode_is_rejected(self):
         with self.assertRaises(ValueError):
             get_judge("magic")
+
+
+class TestRationaleContract(unittest.TestCase):
+    """The rules every rationale must follow, checked across every real fixture.
+
+    Two rules, both learned from reading a report that had been generated and looked
+    wrong to a person who could see the intake next to it:
+
+    1. Describe what was read. Never claim the business's own words said nothing.
+    2. Never surface the token that matched. Name the system or the problem.
+    """
+
+    # Phrasings that assert an absence of evidence in what the business wrote, or that
+    # leak the matcher. Claims about an optional structured field not being filled in
+    # are allowed and are not listed here.
+    BANNED_FRAGMENTS = (
+        "does not name",
+        "does not say",
+        "did not say",
+        "no specific",
+        "the best source named is",
+        "the intake points at",
+        "sign(s)",
+        "handoff(s)",
+        "step(s)",
+        "(s)",
+    )
+
+    def rationales(self):
+        for path in ALL_INTAKES:
+            result = audit_document(load_intake(path))
+            for opportunity in result.opportunities:
+                for criterion in opportunity.criteria:
+                    yield path.name, opportunity.process.id, criterion.id, criterion.rationale
+
+    def test_no_rationale_asserts_an_absence_or_leaks_a_token(self):
+        for intake, process_id, criterion_id, rationale in self.rationales():
+            for banned in self.BANNED_FRAGMENTS:
+                with self.subTest(intake=intake, process=process_id, criterion=criterion_id):
+                    self.assertNotIn(banned, rationale.lower())
+
+    def test_every_rationale_is_a_readable_sentence(self):
+        for intake, process_id, criterion_id, rationale in self.rationales():
+            with self.subTest(intake=intake, process=process_id, criterion=criterion_id):
+                self.assertTrue(rationale.strip())
+                self.assertTrue(rationale[0].isupper(), rationale)
+                self.assertTrue(rationale.rstrip().endswith("."), rationale)
+
+    def test_pain_rationale_describes_the_text_when_nothing_matches(self):
+        document = minimal_intake()
+        # Real trouble, described in words the category lists do not contain.
+        document["processes"][0]["pain_description"] = (
+            "The owner finds it tedious and it eats the start of every week."
+        )
+        result = audit_document(document)
+        rationale = result.opportunities[0].criterion("pain").rationale
+        self.assertIn("tedious", rationale.lower())
+        for banned in ("does not name", "does not say", "no specific"):
+            self.assertNotIn(banned, rationale.lower())
+
+    def test_data_rationale_names_the_actual_system(self):
+        document = minimal_intake()
+        document["processes"][0]["current_tools"] = ["QuickBooks Online", "paper"]
+        document["processes"][0]["data_notes"] = "It all lives in QuickBooks Online."
+        result = audit_document(document)
+        rationale = result.opportunities[0].criterion("data_availability").rationale
+        self.assertIn("QuickBooks Online", rationale)
 
 
 class TestScoring(unittest.TestCase):
@@ -943,6 +1167,39 @@ class TestReport(unittest.TestCase):
     def test_no_sequencing_note_when_no_change_is_planned(self):
         text = render_markdown(self.result, generated_on=date(2026, 8, 1))
         self.assertNotIn("Sequencing note", text)
+
+    def test_headline_leads_the_report_and_names_the_top_reason(self):
+        text = render_markdown(self.result, generated_on=date(2026, 8, 1))
+        html = render_html(self.result, generated_on=date(2026, 8, 1))
+        top = self.result.opportunities[0]
+
+        self.assertIn("## In short", text)
+        self.assertIn(top.process.name, text)
+        self.assertIn(top.strongest.rationale, text)
+        self.assertIn(top.strongest.rationale, html)
+
+        # The headline must come before the disclosure, not after it.
+        self.assertLess(text.index("## In short"), text.index("generated by an AI system"))
+        self.assertLess(
+            html.index('class="headline"'), html.index("generated by an AI system")
+        )
+
+    def test_disclosure_is_still_present_after_the_headline(self):
+        text = render_markdown(self.result, generated_on=date(2026, 8, 1))
+        html = render_html(self.result, generated_on=date(2026, 8, 1))
+        self.assertIn("generated by an AI system", text)
+        self.assertIn("generated by an AI system", html)
+
+    def test_step_counts_agree_with_their_verbs(self):
+        # "of which 1 are done by hand" was the bug.
+        for path in ALL_INTAKES:
+            result = audit_document(load_intake(path))
+            text = render_markdown(result, generated_on=date(2026, 8, 1))
+            with self.subTest(intake=path.name):
+                self.assertNotIn("which 1 are done", text)
+                self.assertNotIn("1 handoffs", text)
+                self.assertNotIn("1 waiting steps", text)
+                self.assertNotIn("1 steps from", text)
 
     def test_reports_explain_the_cap_rule(self):
         text = render_markdown(self.result, generated_on=date(2026, 8, 1))

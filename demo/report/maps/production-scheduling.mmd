@@ -1,0 +1,18 @@
+flowchart TD
+    start(["Start"])
+    S1{"Every morning the production manager walks the floor, looks at the..."}
+    S2["He writes the day on a whiteboard"]
+    S3(("Later he updates the production spreadsheet, though often not until..."))
+    finish(["End"])
+    start --> S1
+    S1 --> S2
+    S2 --> S3
+    S3 --> finish
+    classDef waiting fill:#eef1f5,stroke:#6b7785,color:#26303b;
+    class S3 waiting;
+    subgraph legend["What the shapes mean"]
+        direction LR
+        L1{"Decision point"}
+        L2["Step done by hand"]
+        L3(("Waiting on someone"))
+    end

@@ -182,6 +182,7 @@ def _normalize_process(raw: dict[str, Any], index: int, seen_ids: set[str]) -> P
         decision_type=raw.get("decision_type"),
         baseline_metric=(raw.get("baseline_metric") or "").strip() or None,
         customer_facing=raw.get("customer_facing"),
+        exception_rate=raw.get("exception_rate"),
         planned_system_change=_normalize_planned_change(raw.get("planned_system_change")),
     )
 

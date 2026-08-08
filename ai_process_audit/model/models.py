@@ -123,6 +123,7 @@ class Process:
     decision_type: str | None = None
     baseline_metric: str | None = None
     customer_facing: bool | None = None
+    exception_rate: str | None = None
     planned_system_change: PlannedSystemChange | None = None
 
     @property

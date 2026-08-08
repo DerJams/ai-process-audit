@@ -143,7 +143,7 @@ check, so a typo fails when the rubric loads instead of silently never firing.
 
 ## Intake fields
 
-The schema is `intake/schema.json`, currently version 1.2.0. The rule behind it: the
+The schema is `intake/schema.json`, currently version 1.4.0. The rule behind it: the
 intake only asks what a business owner can answer from memory, in one sitting,
 without opening a system or asking their accountant. That is why there are no cost
 fields, no case identifiers, no event logs, and no org chart. A field nobody can
@@ -174,7 +174,9 @@ Per process:
 | `decision_type` | no | `rule_based`, `mixed`, or `judgment_heavy` | implementation risk |
 | `baseline_metric` | no | Any number the business tracks for this today. Null means none | return band, and its cap |
 | `customer_facing` | no | Whether a mistake is seen by a customer. The only place customer reach is recorded | implementation risk |
+| `exception_rate` | no | `rare`, `occasional`, or `frequent`, as roughly how many cases in ten need handling differently | implementation risk |
 | `risk_flags` | no | Money, regulated data, safety, or legal weight. Customer reach is not here, it has its own field | implementation risk |
+| `planned_system_change` | no | A system change the business already intends to make. Feeds no criterion | report only, as a sequencing note |
 | `data_notes` | no | Where the information lives and what shape it is in | data availability |
 | `owner` | no | Who is accountable | report |
 | `id` | no | Stable identifier. Gold labels key on it, so set it if the intake will be labelled | eval harness |
@@ -185,11 +187,24 @@ estimated without it is a guess. `baseline_metric` is optional but consequential
 leaving it null is a valid and common answer, and it caps the return band at 2,
 because a saving nobody can measure is a saving nobody can show.
 
-An optional field being absent never means the answer is favourable. Absent
-`decision_type` is read as `mixed` rather than `rule_based`, and implementation risk
-is never scored 1 when both `decision_type` and `customer_facing` are missing, since a
-1 claims nothing can go wrong and that claim needs evidence. The rationale says which
-fields were missing and that the score was made conservatively.
+Implementation risk reads three optional fields, `decision_type`, `customer_facing`,
+and `exception_rate`, and scores conservatively when any of them is absent.
+
+**An optional field being absent never means the answer is favourable.** Absent
+`decision_type` reads as `mixed` rather than `rule_based`. Absent `exception_rate`
+reads as `occasional` rather than `rare`, because a business that has not counted its
+exceptions is not thereby a business without any, and the optimistic reading would
+hand a discount to whoever answered least. Implementation risk is never scored 1 when
+all three are missing, since a 1 claims nothing can go wrong and that claim needs
+evidence rather than silence. The rationale says which fields were missing and that
+the score was made conservatively.
+
+Every rationale follows two rules, and the live judge prompt will carry the same ones.
+It must describe what was read rather than assert that the business said nothing,
+because a claim like "the description names no specific cost" is wrong the moment the
+matching misses something the reader can see sitting above it. And it must never
+surface the token that matched, so it names the actual system or the actual problem in
+normal prose.
 
 ## Why a pipeline and not an agent
 

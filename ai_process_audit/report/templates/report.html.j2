@@ -28,6 +28,14 @@
        padding-bottom: 1mm; }
   p { margin: 0 0 1.6mm 0; }
   .subtitle { color: #5b6a7a; font-size: 8.4pt; margin-bottom: 3mm; }
+  .headline {
+    border-left: 1.6pt solid #1e4f7a;
+    background: #f4f8fc;
+    padding: 2mm 2.5mm;
+    margin-bottom: 3mm;
+    font-size: 8.8pt;
+    color: #1c2530;
+  }
   .notice {
     border: 0.6pt solid #b3762a;
     background: #fdf6ea;
@@ -81,6 +89,16 @@
   {{ opportunities | length }} process{{ "es" if opportunities | length != 1 else "" }} reviewed
   {%- if intake.collected_on %} &middot; intake collected {{ intake.collected_on }}{% endif %}
 </p>
+
+{% if opportunities %}
+{% set lead = opportunities[0] %}
+<div class="headline">
+  <strong>{{ lead.process.name }}</strong> is the strongest candidate of the
+  {{ opportunities | length }} reviewed, at {{ lead.weighted_score | score }} out of
+  {{ "%.2f" | format(rubric.scale_max | float) }} and in {{ lead.band.label }}. What puts it
+  top is {{ lead.strongest.label | lower }}: {{ lead.strongest.rationale }}
+</div>
+{% endif %}
 
 {% if warnings %}
 <div class="notice">

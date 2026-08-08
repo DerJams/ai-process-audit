@@ -1,6 +1,6 @@
 # Automation Opportunity Rubric
 
-**Version: 1.2.1-draft**
+**Version: 1.3.0-draft**
 **Status: DRAFT. Not approved. Weights and criteria are proposals awaiting review.**
 
 This file is the single source of truth for scoring. The engine reads the machine
@@ -91,7 +91,16 @@ read it. This is the criterion that most often kills an otherwise good candidate
 What could go wrong if the automation is wrong, and how hard it is to catch. Higher
 means riskier. Score the risk, not the desirability. The engine inverts this.
 
-Two intake fields feed this criterion directly.
+Three optional intake fields feed this criterion. All three are optional, so the
+anchors below say what to do when any of them is missing, and the rationale must say
+which ones were absent and that the score was made conservatively.
+
+**exception_rate** is roughly how many cases out of ten need handling differently from
+the normal path. It is here because it is the thing that breaks automations after
+launch rather than during the build. A process with a long tail of exceptions can be
+automated for the normal path and then spends the rest of its life being patched, and
+each patch is a new rule written by someone who was not there for the last one. Rare
+exceptions pull the score down, frequent exceptions push it up.
 
 **decision_type** is how much of the work is judgement. A `rule_based` process can be
 checked against its own rules, so a wrong output is findable. A `judgment_heavy`
@@ -113,20 +122,23 @@ weight.
 
 | Score | Anchor |
 | --- | --- |
-| 1 | Rule based, internal only, easily reversed, and a mistake is obvious immediately. |
-| 2 | Rule based or mixed, internal, reversible, and a mistake would be caught within a day by normal checks. |
-| 3 | Mixed judgement, or customer facing but low consequence, where a mistake takes a few days to surface and costs rework. |
-| 4 | Judgement heavy, or customer facing where an error damages a relationship, or it moves money or writes to the books, and errors are hard to spot. |
-| 5 | Legally binding, safety related, or regulated, where a single wrong output is a serious event, whoever sees it. |
+| 1 | Rule based with rare exceptions, internal only, easily reversed, and a mistake is obvious immediately. |
+| 2 | Rule based or mixed with rare or occasional exceptions, internal, reversible, and a mistake would be caught within a day by normal checks. |
+| 3 | Mixed judgement, or occasional exceptions, or customer facing but low consequence, where a mistake takes a few days to surface and costs rework. |
+| 4 | Judgement heavy, or frequent exceptions, or customer facing where an error damages a relationship, or it moves money or writes to the books, and errors are hard to spot. |
+| 5 | Legally binding, safety related, or regulated, where a single wrong output is a serious event, whoever sees it. Frequent exceptions on top of any of those keep it here. |
 
 **When these fields are absent**, score conservatively rather than optimistically,
-and say in the rationale that the field was not reported. Absent `decision_type` is
-read as `mixed`, not as `rule_based`, because a business that has not thought about
-whether a process is rule based usually has not written the rules down. Absent
-`customer_facing` is read as customer facing when the process description mentions
-customers at all, and as internal only when it does not. Never score 1 on a process
-where both fields are missing, because a 1 is a claim that nothing can go wrong, and
-that claim needs evidence.
+and say in the rationale which ones were not reported. The defaults are:
+
+| Field | Absent is read as | Why not the optimistic reading |
+| --- | --- | --- |
+| `exception_rate` | `occasional` | A business that has not counted its exceptions is not thereby a business without any. Reading it as rare would hand a discount to whoever answered least. |
+| `decision_type` | `mixed` | A business that has not thought about whether a process is rule based has usually not written the rules down. |
+| `customer_facing` | read from the description, customer facing if it mentions customers at all | The description is weaker evidence than the field, so it errs toward the costlier reading. |
+
+Never score 1 on a process where all three are missing, because a 1 is a claim that
+nothing can go wrong, and that claim needs evidence rather than silence.
 
 ### 6. Return band (weight 0.15)
 
@@ -251,6 +263,7 @@ what a change has to cite.
 | 1.1.0-draft | 2026-08-02 | Added the implementation risk band cap. Resolved the four open questions, keeping all weights as drafted. Weights now change only on gold set evidence. Still not approved. |
 | 1.2.0-draft | 2026-08-02 | Return band anchors now read time spent and baseline metric, with a criterion cap at 2 where nothing is tracked. Implementation risk anchors now read decision type and customer facing, with stated conservative defaults when either is absent. Weights unchanged. Risk band cap unchanged. Still not approved. |
 | 1.2.1-draft | 2026-08-02 | Customer reach is now read only from the customer_facing field. It was also a risk_flags value, so implementation risk could count the same fact twice. No weights, anchors, or caps changed. Still not approved. |
+| 1.3.0-draft | 2026-08-08 | Implementation risk anchors now read exception_rate as well, so the criterion reads three optional fields. Exception rate is treated as first class in established process selection practice because a long tail of variation is what breaks an automation after launch. Absent is read as occasional and said in the rationale. No new criterion, no weight change, both caps unchanged. Still not approved. |
 
 ## Machine readable specification
 
@@ -258,7 +271,7 @@ The engine parses the block below. Nothing else in this file is read by code.
 
 ```rubric-spec
 {
-  "version": "1.2.1-draft",
+  "version": "1.3.0-draft",
   "approved": false,
   "scale": {"min": 1, "max": 5},
   "criteria": [

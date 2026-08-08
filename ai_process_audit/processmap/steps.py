@@ -109,8 +109,19 @@ MIN_WORDS_PER_STEP = 3
 # both look careless on a map a client is reading. Most fragments therefore end up
 # with no actor at all, which is the honest answer, because English drops the subject
 # after the first clause and this parser cannot recover it.
+# Stripped from the front of a fragment before looking for the subject. Determiners
+# and quantifiers sit in front of the subject, and so do subordinating conjunctions:
+# "When the customer replies" has the same subject as "The customer replies", and
+# missing that was why handoff counts came out at zero on processes that visibly pass
+# work between people.
 LEADING_FILLER = frozenset(
-    {"the", "a", "an", "each", "every", "one", "any", "all", "our", "their", "his", "her"}
+    {
+        "the", "a", "an", "each", "every", "one", "any", "all", "our", "their",
+        "his", "her", "its",
+        "when", "once", "if", "after", "before", "while", "as", "until", "unless",
+        "whenever", "then", "next", "so", "and", "but", "meanwhile", "usually",
+        "normally", "typically", "eventually", "finally", "sometimes", "often",
+    }
 )
 
 MAX_STEPS = 24
@@ -164,9 +175,27 @@ class ProcessMap:
         return sum(1 for step in self.steps if step.kind == "wait")
 
     @property
+    def effective_actors(self) -> tuple[str | None, ...]:
+        """Who is doing each step, carrying the last named actor forward.
+
+        English drops the subject after the first clause, so "The designer prepares a
+        proof, then emails it to the customer" names an actor once and expects the
+        reader to carry it. Counting only the steps that name someone therefore missed
+        almost every handoff. The carried value is used for counting and is
+        deliberately not shown on the map, because it is inferred rather than read.
+        """
+        carried: list[str | None] = []
+        current: str | None = None
+        for step in self.steps:
+            if step.actor:
+                current = step.actor
+            carried.append(current)
+        return tuple(carried)
+
+    @property
     def handoff_count(self) -> int:
         """Number of times the process changes hands between named actors."""
-        seen = [step.actor for step in self.steps if step.actor]
+        seen = [actor for actor in self.effective_actors if actor]
         return sum(1 for before, after in zip(seen, seen[1:]) if before != after)
 
     @property

@@ -168,6 +168,46 @@ class TestValidator(unittest.TestCase):
         document["processes"][0]["baseline_metric"] = None
         self.assertIsNotNone(validate_intake(document))
 
+    def test_planned_system_change_is_accepted(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "description": "Moving from the old system to a new one next year.",
+            "timeframe": "three_to_12_months",
+        }
+        self.assertIsNotNone(validate_intake(document))
+
+    def test_planned_system_change_timeframe_is_optional(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "description": "Replacing the booking system at some point."
+        }
+        self.assertIsNotNone(validate_intake(document))
+
+    def test_planned_system_change_needs_a_description(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "timeframe": "within_3_months"
+        }
+        with self.assertRaises(IntakeValidationError) as caught:
+            validate_intake(document)
+        self.assertIn("description", str(caught.exception))
+
+    def test_bad_planned_change_timeframe_is_rejected(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "description": "Something is changing.",
+            "timeframe": "soon_ish",
+        }
+        with self.assertRaises(IntakeValidationError):
+            validate_intake(document)
+
+    def test_intakes_written_against_1_2_0_are_still_accepted(self):
+        # 1.3.0 only adds an optional field, so it is backward compatible and the
+        # three synthetic intakes are not edited to keep up.
+        document = minimal_intake()
+        document["schema_version"] = "1.2.0"
+        self.assertIsNotNone(validate_intake(document))
+
     def test_customer_facing_is_not_a_risk_flag(self):
         # It has its own boolean field. Allowing both would let one fact be counted
         # twice in the risk score, and let an intake contradict itself.
@@ -754,6 +794,51 @@ class TestScoring(unittest.TestCase):
         self.assertNotIn("pain", capped)
         self.assertNotIn("implementation_risk", capped)
 
+    def test_planned_system_change_moves_no_number(self):
+        # The field is carried and printed, and must reach no criterion. Every score,
+        # every cap, and the band have to come out identical with and without it.
+        without = minimal_intake()
+        with_change = copy.deepcopy(without)
+        with_change["processes"][0]["planned_system_change"] = {
+            "description": (
+                "Replacing the whole system with a regulated database that has an api, "
+                "which is stressful, error prone, and losing us customers every week."
+            ),
+            "timeframe": "within_3_months",
+        }
+
+        plain = audit_document(without).opportunities[0]
+        changed = audit_document(with_change).opportunities[0]
+
+        self.assertEqual(
+            {item.id: (item.judge_score, item.raw_score) for item in plain.criteria},
+            {item.id: (item.judge_score, item.raw_score) for item in changed.criteria},
+        )
+        self.assertEqual(plain.weighted_score, changed.weighted_score)
+        self.assertEqual(plain.band.id, changed.band.id)
+        self.assertEqual(plain.band_before_caps.id, changed.band_before_caps.id)
+        self.assertEqual(len(plain.applied_caps), len(changed.applied_caps))
+        # The description above is stuffed with words the stub scans for, so if the
+        # field ever leaked into the scored text this test would fail loudly.
+        self.assertNotIn("api", changed.process.all_text.lower().split())
+
+    def test_planned_system_change_is_carried_into_the_model(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "description": "Moving the booking system.",
+            "timeframe": "later_or_unknown",
+        }
+        process = normalize_intake(validate_intake(document)).processes[0]
+        self.assertIsNotNone(process.planned_system_change)
+        self.assertEqual(process.planned_system_change.description, "Moving the booking system.")
+        self.assertEqual(
+            process.planned_system_change.describe_timeframe(), "later, or not yet known"
+        )
+
+    def test_absent_planned_system_change_is_none(self):
+        process = normalize_intake(validate_intake(minimal_intake())).processes[0]
+        self.assertIsNone(process.planned_system_change)
+
     def test_uncapped_process_records_no_cap(self):
         result = audit_document(minimal_intake())
         opportunity = result.opportunities[0]
@@ -838,6 +923,26 @@ class TestReport(unittest.TestCase):
                 # The band the score earned must still be visible, so the reader can
                 # see what the cap overrode.
                 self.assertIn(opportunity.band_before_caps.label, content)
+
+    def test_planned_system_change_appears_as_a_sequencing_note(self):
+        document = minimal_intake()
+        document["processes"][0]["planned_system_change"] = {
+            "description": "Replacing the booking system with a new one.",
+            "timeframe": "within_3_months",
+        }
+        result = audit_document(document)
+        text = render_markdown(result, generated_on=date(2026, 8, 1))
+        html = render_html(result, generated_on=date(2026, 8, 1))
+        for name, content in (("markdown", text), ("html", html)):
+            with self.subTest(output=name):
+                self.assertIn("Replacing the booking system with a new one.", content)
+                self.assertIn("within 3 months", content)
+                # The report has to say plainly that it changed nothing.
+                self.assertIn("did not affect", content.lower())
+
+    def test_no_sequencing_note_when_no_change_is_planned(self):
+        text = render_markdown(self.result, generated_on=date(2026, 8, 1))
+        self.assertNotIn("Sequencing note", text)
 
     def test_reports_explain_the_cap_rule(self):
         text = render_markdown(self.result, generated_on=date(2026, 8, 1))

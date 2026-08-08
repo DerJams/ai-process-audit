@@ -14,7 +14,15 @@ import re
 import unicodedata
 from typing import Any
 
-from .models import Business, Intake, People, Process, TimeSpent, Volume
+from .models import (
+    Business,
+    Intake,
+    People,
+    PlannedSystemChange,
+    Process,
+    TimeSpent,
+    Volume,
+)
 
 # A working year, used to turn a weekly time figure into a yearly one. Deliberately
 # below 52 so that holiday and closure weeks are not counted as working ones.
@@ -128,6 +136,21 @@ def _normalize_people(raw: dict[str, Any], runs_per_year: float) -> People:
     )
 
 
+def _normalize_planned_change(raw: dict[str, Any] | None) -> PlannedSystemChange | None:
+    """Carry a planned system change into the model, unchanged.
+
+    Nothing is derived from it here. It is deliberately not added to Process.all_text
+    either, because that text is scanned for scoring keywords and this field must not
+    reach any criterion.
+    """
+    if not raw:
+        return None
+    return PlannedSystemChange(
+        description=raw["description"].strip(),
+        timeframe=raw.get("timeframe"),
+    )
+
+
 def _normalize_process(raw: dict[str, Any], index: int, seen_ids: set[str]) -> Process:
     frequency = raw["frequency"]
     runs_per_year = RUNS_PER_YEAR[frequency]
@@ -159,6 +182,7 @@ def _normalize_process(raw: dict[str, Any], index: int, seen_ids: set[str]) -> P
         decision_type=raw.get("decision_type"),
         baseline_metric=(raw.get("baseline_metric") or "").strip() or None,
         customer_facing=raw.get("customer_facing"),
+        planned_system_change=_normalize_planned_change(raw.get("planned_system_change")),
     )
 
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/ai-process-audit/schemas/intake-1.2.0.json",
+  "$id": "https://github.com/ai-process-audit/schemas/intake-1.3.0.json",
   "title": "AI Process Audit intake",
   "description": "A structured description of a business and the processes it runs. This is the only input to the engine. Every field asks for something a business owner can answer from memory, which is why there are no cost fields, no case identifiers, and no org chart.",
   "type": "object",
@@ -8,9 +8,9 @@
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "description": "Version of this intake schema the file was written against.",
+      "description": "Version of this intake schema the file was written against. 1.3.0 only adds one optional field to 1.2.0 and removes nothing, so a document written against 1.2.0 still satisfies this schema and is still accepted. Earlier versions are not, because 1.2.0 removed an enum value and 1.1.0 made a field required.",
       "type": "string",
-      "const": "1.2.0"
+      "enum": ["1.2.0", "1.3.0"]
     },
     "intake_id": {
       "description": "Optional stable identifier for this intake, used to match gold labels in the eval harness.",
@@ -221,6 +221,25 @@
         "customer_facing": {
           "description": "Optional. True when a mistake in this process is seen by a customer rather than caught inside the business. Read by the implementation risk criterion as the size of the blast radius.",
           "type": "boolean"
+        },
+        "planned_system_change": {
+          "description": "Optional. A system change the business already intends to make that touches this process, for example replacing the tool it runs in. Absent means not reported. This field feeds none of the six scoring criteria and changes no score, cap, or band. It appears in the report as a sequencing note, because a process about to move to a different system is a question of when and how to automate rather than whether.",
+          "type": "object",
+          "required": ["description"],
+          "additionalProperties": false,
+          "properties": {
+            "description": {
+              "description": "What is changing, in the words the business would use.",
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 1000
+            },
+            "timeframe": {
+              "description": "Optional. Roughly when. Absent means the business did not say.",
+              "type": "string",
+              "enum": ["within_3_months", "three_to_12_months", "later_or_unknown"]
+            }
+          }
         },
         "risk_flags": {
           "description": "Optional. Properties of the process that raise implementation risk. Absent means none were reported, not that none exist. Whether a process is customer facing is not listed here, because it has its own field.",

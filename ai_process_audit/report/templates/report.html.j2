@@ -160,6 +160,27 @@
 </p>
 {% endif %}
 
+{% if planned_changes %}
+<h2>System changes already planned</h2>
+<table>
+  <thead>
+    <tr><th>Process</th><th>What is changing</th><th>Timeframe</th></tr>
+  </thead>
+  <tbody>
+    {% for item in planned_changes %}
+    <tr>
+      <td class="pname">{{ item.process.name }}</td>
+      <td>{{ item.process.planned_system_change.description }}</td>
+      <td class="pmeta">{{ item.process.planned_system_change.describe_timeframe() }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<p class="pmeta">This did not affect any score, band, or ranking above. It is a question of
+  when and how to build rather than whether, and the sequencing is a judgement for the
+  human review.</p>
+{% endif %}
+
 <h2>What to do with this</h2>
 <ol class="next">
   <li>Check the figures. Volumes and time estimates came from the intake and were not verified.</li>

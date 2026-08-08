@@ -31,6 +31,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -64,6 +65,14 @@ EDGE_CANDIDATES = (
 )
 
 EDGE_TIMEOUT_SECONDS = 120
+
+# Edge can exit before the PDF has finished being written, so the process returning
+# is not the same as the file existing. It is worse when Edge is already running,
+# because the command hands work to another process and the one we launched returns
+# almost immediately. Without this wait the renderer looks broken on exactly the
+# machines where somebody has a browser open, which is most of them.
+EDGE_WRITE_TIMEOUT_SECONDS = 30
+EDGE_POLL_SECONDS = 0.25
 
 
 class PdfUnavailableError(RuntimeError):
@@ -159,9 +168,19 @@ def _context(result: AuditResult, generated_on: date | None) -> dict:
             + ", so monthly was assumed for scoring."
         )
 
+    # Processes the business already plans to change the system under. Reported as a
+    # sequencing note and nothing more. No score, cap, or band is affected by it, and
+    # no recommendation is derived from it yet.
+    planned_changes = [
+        opportunity
+        for opportunity in result.opportunities
+        if opportunity.process.planned_system_change is not None
+    ]
+
     return {
         "result": result,
         "intake": result.intake,
+        "planned_changes": planned_changes,
         "business": result.intake.business,
         "opportunities": result.opportunities,
         "summary_rows": shown,
@@ -223,6 +242,35 @@ def find_edge() -> Path | None:
     return None
 
 
+def _wait_for_pdf(destination: Path) -> bool:
+    """Wait for the PDF to appear and stop growing.
+
+    Returns False if nothing usable arrived in time. Size is checked as well as
+    existence, because a file that exists at zero bytes is a write in progress, and a
+    stable size across two polls is the cheapest way to tell a finished write from a
+    partial one without parsing the file.
+    """
+    deadline = time.monotonic() + EDGE_WRITE_TIMEOUT_SECONDS
+    last_size = -1
+    while time.monotonic() < deadline:
+        size = _size_or_none(destination)
+        if size is not None and size > 0 and size == last_size:
+            return True
+        last_size = size if size is not None else -1
+        time.sleep(EDGE_POLL_SECONDS)
+    final = _size_or_none(destination)
+    return final is not None and final > 0
+
+
+def _size_or_none(path: Path) -> int | None:
+    """Size of a file, or None if it is not there or cannot be read yet."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        # Missing, or briefly locked by the writer. Both mean not ready.
+        return None
+
+
 def render_pdf_with_edge(html_path: Path, destination: Path) -> Path:
     """Print an HTML file to PDF using headless Edge.
 
@@ -247,7 +295,13 @@ def render_pdf_with_edge(html_path: Path, destination: Path) -> Path:
     # ours, and then reports success after failing to write. Give it an absolute one.
     destination = destination.resolve()
     source_url = html_path.resolve().as_uri()
-    with tempfile.TemporaryDirectory() as profile_dir:
+
+    # The profile directory is made and removed by hand rather than with a context
+    # manager. Edge exits before it has finished with the directory, so an automatic
+    # cleanup raises PermissionError on Windows while the files are still held open,
+    # and a failed cleanup of a throwaway profile should never fail a report.
+    profile_dir = tempfile.mkdtemp(prefix="ai-process-audit-edge-")
+    try:
         command = [
             str(edge),
             "--headless",
@@ -281,14 +335,16 @@ def render_pdf_with_edge(html_path: Path, destination: Path) -> Path:
         except OSError as exc:
             raise PdfUnavailableError(f"Edge could not be started: {exc}") from exc
 
-    if not destination.exists():
-        detail = (completed.stderr or completed.stdout or "").strip().splitlines()
-        last_line = detail[-1] if detail else "no output"
-        raise PdfUnavailableError(
-            f"Edge ran but wrote no PDF (exit code {completed.returncode}). "
-            f"Last thing it said: {last_line}"
-        )
-    return destination
+        if not _wait_for_pdf(destination):
+            detail = (completed.stderr or completed.stdout or "").strip().splitlines()
+            last_line = detail[-1] if detail else "no output"
+            raise PdfUnavailableError(
+                f"Edge ran but wrote no PDF within {EDGE_WRITE_TIMEOUT_SECONDS} seconds "
+                f"(exit code {completed.returncode}). Last thing it said: {last_line}"
+            )
+        return destination
+    finally:
+        shutil.rmtree(profile_dir, ignore_errors=True)
 
 
 def write_reports(

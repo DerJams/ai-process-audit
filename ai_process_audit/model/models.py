@@ -68,6 +68,31 @@ class TimeSpent:
 
 
 @dataclass(frozen=True)
+class PlannedSystemChange:
+    """A system change the business already intends to make.
+
+    Carried through the pipeline and printed in the report. It feeds no criterion and
+    changes no score, cap, or band. It is here because a process about to move to a
+    different system raises a question of timing rather than a question of merit, and
+    a reader needs to see that next to the ranking rather than discover it later.
+    """
+
+    description: str
+    timeframe: str | None = None
+
+    TIMEFRAME_LABELS = {
+        "within_3_months": "within 3 months",
+        "three_to_12_months": "in 3 to 12 months",
+        "later_or_unknown": "later, or not yet known",
+    }
+
+    def describe_timeframe(self) -> str:
+        if self.timeframe is None:
+            return "no timeframe given"
+        return self.TIMEFRAME_LABELS[self.timeframe]
+
+
+@dataclass(frozen=True)
 class People:
     """Who runs a process and how much of their time it takes."""
 
@@ -98,6 +123,7 @@ class Process:
     decision_type: str | None = None
     baseline_metric: str | None = None
     customer_facing: bool | None = None
+    planned_system_change: PlannedSystemChange | None = None
 
     @property
     def has_baseline(self) -> bool:
